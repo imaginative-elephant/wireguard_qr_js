@@ -1,0 +1,33 @@
+services:
+  wireguard-qr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wireguard-qr
+    ports:
+      - '${WEB_PORT:-8080}:8080'
+
+    environment:
+      - TZ=${TZ:-UTC}
+
+    restart: unless-stopped
+
+    # Security hardening
+    # read_only: true
+    # tmpfs:
+    #   - /tmp:size=64M,noexec,nosuid
+    #   - /var/cache/nginx:size=32M,noexec,nosuid
+    #   - /var/log/nginx:size=16M,noexec,nosuid
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080']
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

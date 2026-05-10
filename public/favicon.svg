@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="6" fill="#18181b"/>
+  
+  <!-- Shield -->
+  <path d="M16 7 L24 11 V19 C24 23 20.5 26 16 28 C11.5 26 8 23 8 19 V11 L16 7Z" 
+        stroke="#22d3ee" stroke-width="2.5" fill="none"/>
+  
+  <!-- QR Area -->
+  <rect x="10.5" y="11.5" width="11" height="11" rx="1" fill="#18181b"/>
+  
+  <!-- QR Dots - Moved further apart and away from keyhole -->
+  <rect x="11.2" y="12.8" width="2.2" height="2.2" fill="#67e8f9"/>
+  <rect x="18.6" y="12.8" width="2.2" height="2.2" fill="#67e8f9"/>
+  <rect x="11.2" y="17.8" width="2.2" height="2.2" fill="#67e8f9"/>
+  
+  <!-- Keyhole with good clearance -->
+  <rect x="14.5" y="14.8" width="3" height="6" rx="1" fill="#18181b" stroke="#67e8f9" stroke-width="1.8"/>
+  <circle cx="16" cy="17.8" r="1.35" fill="#18181b"/>
+  <circle cx="16" cy="17.8" r="0.7" fill="#67e8f9"/>
+</svg>
