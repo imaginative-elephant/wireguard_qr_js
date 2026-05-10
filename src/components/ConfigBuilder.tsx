@@ -3,6 +3,12 @@ import { Plus, Trash2 } from 'lucide-react';
 import { KeyField } from './KeyField';
 import { QRDisplay } from './QRDisplay';
 import { generateKeyPair, derivePubKey, generatePresharedKey } from '../utils/crypto';
+import {
+  validateWireGuardKey,
+  validateEndpoint,
+  validateAllowedIPs,
+  validateDNS,
+} from '../utils/validators';
 import toast from 'react-hot-toast';
 
 interface Peer {
@@ -23,6 +29,39 @@ const DEFAULT_PEER: Peer = {
   presharedKey: '',
 };
 
+const inputClass = (hasError: boolean) =>
+  `w-full bg-zinc-950 border rounded-xl px-4 py-3 text-[14px] text-white placeholder:text-zinc-500 transition-all outline-none ${
+    hasError ? 'border-red-600 focus:border-red-500' : 'border-zinc-600 focus:border-blue-500'
+  }`;
+
+const ValidatedInput = ({
+  value,
+  validator,
+  placeholder,
+  onChange,
+}: {
+  value: string;
+  validator: (val: string) => { isValid: boolean; error?: string };
+  placeholder: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) => {
+  const validation = validator(value);
+  return (
+    <>
+      <input
+        type="text"
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={inputClass(!validation.isValid)}
+      />
+      {!validation.isValid && (
+        <p className="mt-1 text-sm text-red-400">{validation.error}</p>
+      )}
+    </>
+  );
+};
+
 export function ConfigBuilder() {
   // Interface
   const [interfacePrivateKey, setInterfacePrivateKey] = useState('');
@@ -36,6 +75,11 @@ export function ConfigBuilder() {
   const [nextPeerId, setNextPeerId] = useState(2);
 
   const [fullConfig, setFullConfig] = useState('');
+
+  const validateOptionalWireGuardKey = (key: string, fieldName: string) => {
+    if (!key.trim()) return { isValid: true };
+    return validateWireGuardKey(key, fieldName);
+  };
 
   useEffect(() => {
     let config = '[Interface]\n';
@@ -155,6 +199,9 @@ export function ConfigBuilder() {
                 onChange={setInterfacePrivateKey}
                 onGenerate={handleGenerateInterfaceKeys}
                 generateButtonText="Generate Keys"
+                isSensitive
+                defaultHidden={true}
+                validator={(value) => validateWireGuardKey(value, 'Private Key')}
               />
 
               <KeyField
@@ -178,26 +225,20 @@ export function ConfigBuilder() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-zinc-300 mb-2 block font-medium">Address</label>
-                  <input
-                    type="text"
+                  <ValidatedInput
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+                    validator={validateAllowedIPs}
                     placeholder="10.0.0.2/32"
-                    className="w-full bg-zinc-950 border border-zinc-600 focus:border-blue-500
-                             text-white placeholder:text-zinc-500 rounded-xl px-4 py-3
-                             text-[14px] outline-none transition-all"
+                    onChange={(e) => setAddress(e.target.value)}
                   />
                 </div>
                 <div>
                   <label className="text-sm text-zinc-300 mb-2 block font-medium">DNS</label>
-                  <input
-                    type="text"
+                  <ValidatedInput
                     value={dns}
-                    onChange={(e) => setDns(e.target.value)}
+                    validator={validateDNS}
                     placeholder="1.1.1.1, 8.8.8.8"
-                    className="w-full bg-zinc-950 border border-zinc-600 focus:border-blue-500
-                             text-white placeholder:text-zinc-500 rounded-xl px-4 py-3
-                             text-[14px] outline-none transition-all"
+                    onChange={(e) => setDns(e.target.value)}
                   />
                 </div>
               </div>
@@ -243,6 +284,7 @@ export function ConfigBuilder() {
                   onChange={(val) => updatePeer(peer.id, { publicKey: val })}
                   showGenerateButton={false}
                   placeholder="Server's public key"
+                  validator={(value) => validateWireGuardKey(value, 'Peer Public Key')}
                 />
 
                 <KeyField
@@ -252,32 +294,29 @@ export function ConfigBuilder() {
                   onGenerate={() => handleGeneratePresharedKeyForPeer(peer.id)}
                   generateButtonText="Generate PSK"
                   placeholder="Leave empty for no pre-shared key"
+                  isSensitive
+                  defaultHidden={true}
+                  validator={(value) => validateOptionalWireGuardKey(value, 'Pre-Shared Key')}
                 />
 
                 <div className="space-y-4 mt-6">
                   <div>
                     <label className="text-sm text-zinc-300 mb-2 block font-medium">Endpoint</label>
-                    <input
-                      type="text"
+                    <ValidatedInput
                       value={peer.endpoint}
-                      onChange={(e) => updatePeer(peer.id, { endpoint: e.target.value })}
+                      validator={validateEndpoint}
                       placeholder="vpn.example.com:51820"
-                      className="w-full bg-zinc-950 border border-zinc-600 focus:border-blue-500
-                               text-white placeholder:text-zinc-500 rounded-xl px-4 py-3
-                               text-[14px] outline-none transition-all"
+                      onChange={(e) => updatePeer(peer.id, { endpoint: e.target.value })}
                     />
                   </div>
 
                   <div>
                     <label className="text-sm text-zinc-300 mb-2 block font-medium">Allowed IPs</label>
-                    <input
-                      type="text"
+                    <ValidatedInput
                       value={peer.allowedIPs}
-                      onChange={(e) => updatePeer(peer.id, { allowedIPs: e.target.value })}
+                      validator={validateAllowedIPs}
                       placeholder="0.0.0.0/0"
-                      className="w-full bg-zinc-950 border border-zinc-600 focus:border-blue-500
-                               text-white placeholder:text-zinc-500 rounded-xl px-4 py-3
-                               text-[14px] outline-none transition-all"
+                      onChange={(e) => updatePeer(peer.id, { allowedIPs: e.target.value })}
                     />
                   </div>
 

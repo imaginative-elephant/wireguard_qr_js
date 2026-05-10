@@ -10,20 +10,25 @@ A **100% client-side** React application for generating WireGuard VPN configurat
 ✅ **QR Code Generation** - Scan configs directly into WireGuard mobile apps  
 ✅ **Config Upload** - Parse existing `.conf` files  
 ✅ **Download Configs** - Export complete WireGuard client configurations  
+✅ **Real-Time Validation** - Instant feedback on form inputs with helpful error messages  
+✅ **Multi-Peer Support** - Add, edit, and remove multiple VPN peers  
 ✅ **Offline Support** - Works completely offline  
 ✅ **TypeScript** - Type-safe codebase  
-✅ **Tested** - Comprehensive unit tests  
+✅ **Comprehensive Tests** - 24+ unit tests covering validators and crypto operations  
+✅ **Docker Ready** - Includes Docker and Docker Compose configurations
 
 ## Technology Stack
 
-- **React 19.2** - UI framework
-- **TypeScript** - Type safety
+- **React 19.2** + **TypeScript** - UI framework
 - **Vite** - Build tool (fast development and production builds)
-- **wireguard-keygen** - WireGuard-compatible key generation
+- **@noble/curves** - WireGuard X25519 key generation (browser-compatible)
+- **Web Crypto API** - Native browser cryptography
 - **qrcode.react** - QR code rendering
 - **js-base64** - Base64 encoding/decoding
-- **ini** - `.conf` file parsing
-- **Vitest** - Testing framework
+- **Vitest** - Testing framework (33 validator and crypto tests)
+- **React Hot Toast** - Toast notifications
+- **Lucide React** - Icon library
+- **Tailwind CSS** - Utility-first CSS framework
 
 ## Security
 
@@ -35,10 +40,14 @@ A **100% client-side** React application for generating WireGuard VPN configurat
 - ✅ Open source and auditable
 - ✅ Works offline
 
+## Screenshot
+
+![Screenshot](./public/screenshots/Screenshot_10-5-2026_16425_localhost.jpeg)
+
 ## Installation
 
 ```bash
-git clone https://github.com/your-username/wireguard_qr_js.git
+git clone https://github.com/imaginative-elephant/wireguard_qr_js.git
 cd wireguard_qr_js
 npm install
 ```
@@ -70,85 +79,97 @@ npm run preview
 ```
 src/
 ├── components/
-│   ├── KeyGenerator.tsx      # Key pair and PSK generation
-│   ├── QRDisplay.tsx         # QR code display and download
-│   └── index.ts              # Component exports
+│   ├── ConfigBuilder.tsx      # Multi-peer configuration builder with validation
+│   ├── KeyGenerator.tsx       # Key pair and PSK generation
+│   ├── KeyField.tsx           # Reusable key input with validation
+│   ├── QRDisplay.tsx          # QR code display and download
+│   └── index.ts               # Component exports
 ├── utils/
-│   ├── crypto.ts             # WireGuard key generation
-│   ├── qr.ts                 # QR code utilities
-│   ├── configParser.ts       # .conf file parsing
-│   ├── download.ts           # File download helpers
-│   └── index.ts              # Utils exports
-├── App.tsx                   # Main application
-└── main.tsx                  # React entry point
+│   ├── crypto.ts              # WireGuard X25519 key generation
+│   ├── validators.ts          # Form field validators (with tests)
+│   ├── qr.ts                  # QR code utilities
+│   ├── configParser.ts        # .conf file parsing
+│   ├── download.ts            # File download helpers
+│   └── index.ts               # Utils exports
+├── App.tsx                    # Main application shell
+└── main.tsx                   # React entry point
 ```
 
 ## Usage
 
-1. **Generate Key Pair**
-   - Click "Generate New Key Pair" in the Key Generator section
-   - Your public key is displayed (share with server admin)
-   - Private key is hidden but stored securely
+1. **Generate Interface Key Pair**
+   - Click "Generate New Key Pair" in the Interface section
+   - Public key is displayed (share with server admin)
+   - Private key is hidden and validated in real-time
 
-2. **Generate Pre-Shared Key (PSK)**
-   - Click "Generate PSK" for additional symmetric encryption
+2. **Configure Interface Settings**
+   - Enter your client Address (e.g., `10.0.0.2/32`)
+   - Add DNS servers (comma-separated IPv4/IPv6)
+   - Optional: Set MTU value
+   - All fields validate in real-time
 
-3. **Generate QR Code**
-   - Once you have a configuration, click "Generate QR Code"
+3. **Add Peer(s)**
+   - Click "+ Add Peer" to add VPN server configurations
+   - Paste or generate server's public key
+   - Optional: Generate or paste pre-shared key
+   - Enter server endpoint (hostname:port or IP:port)
+   - Specify allowed IPs (comma-separated CIDR notation)
+   - Optional: Set persistent keepalive interval
+   - Remove peers with the trash icon
+
+4. **Generate Pre-Shared Key (PSK)**
+   - Click "Generate PSK" button for additional symmetric encryption
+
+5. **Generate QR Code**
+   - QR code auto-generates when configuration is valid
    - Scan with your WireGuard mobile app
 
-4. **Download Configuration**
-   - Export configurations as `.conf` files for manual setup
+6. **Download Configuration**
+   - Export complete configuration as `.conf` file
 
-5. **Upload Existing Config**
-   - Parse existing `.conf` files to populate forms
-
-## API Methods
+7. **Upload Existing Config**
+   - Parse existing `.conf` files to populate all forms
 
 ### Crypto Utils
 
 ```typescript
-import { generateKeyPair, generatePresharedKey, derivePublicKey } from '@/utils'
+import { generateKeyPair, generatePresharedKey, derivePublicKey } from '@/utils';
 
 // Generate a new key pair
-const { privateKey, publicKey } = generateKeyPair()
+const { privateKey, publicKey } = generateKeyPair();
 
 // Generate a preshared key
-const { presharedKey } = generatePresharedKey()
+const { presharedKey } = generatePresharedKey();
 
 // Derive public key from private key
-const pubKey = derivePublicKey(privateKey)
+const pubKey = derivePublicKey(privateKey);
 ```
 
 ### Config Parser
 
 ```typescript
-import {
-  parseWireGuardConfig,
-  generateWireGuardConfig,
-  validateWireGuardConfig,
-} from '@/utils'
+import { parseWireGuardConfig, generateWireGuardConfig, validateWireGuardConfig } from '@/utils';
 
 // Parse a .conf file
-const config = parseWireGuardConfig(fileContent)
+const config = parseWireGuardConfig(fileContent);
 
 // Generate .conf content
-const confContent = generateWireGuardConfig(config)
+const confContent = generateWireGuardConfig(config);
 
 // Validate configuration
-const errors = validateWireGuardConfig(config)
+const errors = validateWireGuardConfig(config);
 ```
 
 ### Download Utils
 
 ```typescript
-import { downloadWireGuardConfig, copyToClipboard } from '@/utils'
+import { downloadWireGuardConfig, copyToClipboard } from '@/utils';
 
 // Download config file
-downloadWireGuardConfig(configContent, 'my-config.conf')
+downloadWireGuardConfig(configContent, 'my-config.conf');
 
 // Copy to clipboard
-await copyToClipboard(publicKey)
+await copyToClipboard(publicKey);
 ```
 
 ## Example Configuration
@@ -184,6 +205,18 @@ PersistentKeepalive = 21
 6. Test configurations before deployment
 7. Rotate keys periodically
 
+## Validation
+
+The application includes real-time validation for all form fields:
+
+- **WireGuard Keys** - 44-character base64 format validation
+- **Endpoint** - Hostname or IP address with valid port (1-65535)
+- **Allowed IPs** - CIDR notation validation (IPv4 and IPv6)
+- **Address** - CIDR notation validation for client address
+- **DNS** - IPv4 or IPv6 address validation
+
+Validation errors appear instantly below fields with red borders. Empty optional fields are allowed.
+
 ## Testing
 
 ```bash
@@ -193,36 +226,57 @@ npm test
 # Run tests in watch mode
 npm test -- --watch
 
-# Run specific test file
-npm test -- crypto.ts
+# Run tests with UI
+npm run test:ui
 
 # Generate coverage report
 npm run test:coverage
 ```
+
+**Test Coverage:**
+
+- 24+ unit tests for validators (WireGuard keys, endpoints, IPs, DNS)
+- Comprehensive crypto operation tests
+- Edge case and error scenario coverage
 
 ## Deployment
 
 The app can be deployed to any static hosting:
 
 ### Vercel
+
 ```bash
 npm install -g vercel
 vercel
 ```
 
 ### Netlify
+
 ```bash
 npm install -g netlify-cli
 netlify deploy
 ```
 
-### Docker
+## Docker
+
+Build and run with Docker Compose:
+
 ```bash
-docker build -t wireguard-qr .
-docker run -p 3000:3000 wireguard-qr
+# Build and start the container
+docker compose up --build
+
+# Or build first, then run
+docker compose build
+docker compose up -d
+
+# Stop the container
+docker compose down
 ```
 
+The application will be available at `http://localhost:8080`.
+
 ### GitHub Pages
+
 ```bash
 # Update package.json with your repository
 npm run build
@@ -243,18 +297,20 @@ VITE_APP_TITLE=WireGuard QR Generator
 2. Create a feature branch
 3. Make your changes
 4. Add tests for new features
-5. Submit a pull request
+5. Run `npm test` to verify all tests pass
+6. Run `npm run build` to verify production build succeeds
+7. Submit a pull request
+
+## License
+
+TBD
 
 ## Performance
 
 - ⚡ Vite provides ~10x faster build times
-- 🚀 ~50KB gzipped bundle size
+- 🚀 ~95KB gzipped bundle size
 - 📱 Mobile-optimized UI
 - ♻️ React.memo optimized components
-
-## License
-
-[Add your license here]
 
 ## Security Disclaimer
 
@@ -268,12 +324,11 @@ This application is provided as-is. While we've implemented security best practi
 
 ## Support
 
-- 📝 [GitHub Issues](https://github.com/your-username/wireguard_qr_js/issues)
-- 💬 [GitHub Discussions](https://github.com/your-username/wireguard_qr_js/discussions)
+- 📝 [GitHub Issues](https://github.com/imaginative-elephant/wireguard_qr_js/issues)
+- 💬 [GitHub Discussions](https://github.com/imaginative-elephant/wireguard_qr_js/discussions)
 
 ## Related Projects
 
-- [wireguard-qr-go](https://github.com/imaginative-elephant/wireguard-qr-go) - Go backend version
 - [WireGuard Official](https://www.wireguard.com/)
 - [WireGuard iOS](https://apps.apple.com/app/wireguard/id1451685025)
 - [WireGuard Android](https://play.google.com/store/apps/details?id=com.wireguard.android)
@@ -281,4 +336,7 @@ This application is provided as-is. While we've implemented security best practi
 ---
 
 **Remember**: Your private keys stay in your device. This application generates them locally and never transmits them anywhere.
+
+```
+
 ```
