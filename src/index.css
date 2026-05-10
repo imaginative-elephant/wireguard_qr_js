@@ -1,0 +1,180 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-pale-slate-50: #f1f1f3;
+  --color-pale-slate-100: #e3e3e8;
+  --color-pale-slate-200: #c7c7d1;
+  --color-pale-slate-300: #acacb9;
+  --color-pale-slate-400: #9090a2;
+  --color-pale-slate-500: #74748b;
+  --color-pale-slate-600: #5d5d6f;
+  --color-pale-slate-700: #464653;
+  --color-pale-slate-800: #2e2e38;
+  --color-pale-slate-900: #17171c;
+  --color-pale-slate-950: #101013;
+  --color-blue-slate-50: oklch(95.97% 0.005 247.88);
+  --color-blue-slate-100: oklch(92.14% 0.011 243.66);
+  --color-blue-slate-200: oklch(84.13% 0.023 243.85);
+  --color-blue-slate-300: oklch(75.97% 0.035 244.1);
+  --color-blue-slate-400: oklch(67.73% 0.047 245.4);
+  --color-blue-slate-500: oklch(59.21% 0.059 244.76);
+  --color-blue-slate-600: oklch(50.56% 0.05 245.83);
+  --color-blue-slate-700: oklch(41.4% 0.04 244.84);
+  --color-blue-slate-800: oklch(31.78% 0.029 244.73);
+  --color-blue-slate-900: oklch(21.35% 0.016 244.49);
+  --color-blue-slate-950: oklch(17.88% 0.011 242.46);
+
+  --color-racing-red-50: oklch(94.41% 0.029 7.1);
+  --color-racing-red-100: oklch(89.16% 0.058 9.08);
+  --color-racing-red-200: oklch(79.19% 0.123 11.4);
+  --color-racing-red-300: oklch(70.84% 0.186 15.37);
+  --color-racing-red-400: oklch(65.22% 0.235 20.54);
+  --color-racing-red-500: oklch(62.93% 0.256 26.42);
+  --color-racing-red-600: oklch(53.2% 0.216 26.05);
+  --color-racing-red-700: oklch(43.01% 0.175 25.42);
+  --color-racing-red-800: oklch(32.18% 0.13 23.62);
+  --color-racing-red-900: oklch(20.33% 0.082 19);
+  --color-racing-red-950: oklch(16.53% 0.066 16.07);
+
+  /* FDFFFC */
+  --color-porcelain: #fdfffc;
+
+  --color-porcelain-50: oklch(98.06% 0.038 134.58);
+  --color-porcelain-100: oklch(96.28% 0.076 135.24);
+  --color-porcelain-200: oklch(93.14% 0.148 135.8);
+  --color-porcelain-300: oklch(90.66% 0.212 136.65);
+  --color-porcelain-400: oklch(88.85% 0.257 137.96);
+  --color-porcelain-500: oklch(87.68% 0.281 139.78);
+  --color-porcelain-600: oklch(74.16% 0.237 139.63);
+  --color-porcelain-700: oklch(59.98% 0.191 139.38);
+  --color-porcelain-800: oklch(44.91% 0.141 138.87);
+  --color-porcelain-900: oklch(28.43% 0.087 137.36);
+  --color-porcelain-950: oklch(23.16% 0.069 136.13);
+
+  /* B91372 */
+  --color-medium-violet-red-50: oklch(95.12% 0.028 342.26);
+  --color-medium-violet-red-100: oklch(90.22% 0.055 343.48);
+  --color-medium-violet-red-200: oklch(80.96% 0.113 344.57);
+  --color-medium-violet-red-300: oklch(72.58% 0.17 346.91);
+  --color-medium-violet-red-400: oklch(65.8% 0.219 350.04);
+  --color-medium-violet-red-500: oklch(61.28% 0.243 354.31);
+  --color-medium-violet-red-600: oklch(52.01% 0.205 353.94);
+  --color-medium-violet-red-700: oklch(42.18% 0.164 353.09);
+  --color-medium-violet-red-800: oklch(31.93% 0.121 351.94);
+  --color-medium-violet-red-900: oklch(20.74% 0.073 350.43);
+  --color-medium-violet-red-950: oklch(16.95% 0.059 347.29);
+
+  --color-red-ochre-50: oklch(95.69% 0.017 35.34);
+  --color-red-ochre-100: oklch(91.19% 0.036 34.81);
+  --color-red-ochre-200: oklch(82.53% 0.075 34.24);
+  --color-red-ochre-300: oklch(74.39% 0.117 34.85);
+  --color-red-ochre-400: oklch(67.04% 0.16 35.29);
+  --color-red-ochre-500: oklch(60.85% 0.196 34.56);
+  --color-red-ochre-600: oklch(51.82% 0.165 34.75);
+  --color-red-ochre-700: oklch(42.22% 0.13 34.84);
+  --color-red-ochre-800: oklch(32.05% 0.093 34.9);
+  --color-red-ochre-900: oklch(21.26% 0.054 36.36);
+  --color-red-ochre-950: oklch(17.69% 0.039 40.16);
+
+  --color-amethyst-smoke-50: oklch(95.57% 0.01 299.24);
+  --color-amethyst-smoke-100: oklch(91.14% 0.018 303.4);
+  --color-amethyst-smoke-200: oklch(82.01% 0.037 301.33);
+  --color-amethyst-smoke-300: oklch(72.76% 0.058 301.37);
+  --color-amethyst-smoke-400: oklch(63.16% 0.082 301.06);
+  --color-amethyst-smoke-500: oklch(53.52% 0.105 300.06);
+  --color-amethyst-smoke-600: oklch(45.72% 0.088 299.99);
+  --color-amethyst-smoke-700: oklch(37.72% 0.067 299.72);
+  --color-amethyst-smoke-800: oklch(29.11% 0.048 299.35);
+  --color-amethyst-smoke-900: oklch(19.94% 0.027 301.69);
+  --color-amethyst-smoke-950: oklch(16.87% 0.019 304.69);
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* Remove or reduce the huge default font sizes from index.css if they feel off */
+h1 {
+  font-size: 2.5rem;
+}
+
+h2 {
+  font-size: 1.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9ca3af;
+    --text-h: #f3f4f6;
+    --bg: #16171d;
+    --border: #2e303a;
+    --code-bg: #1f2028;
+    --accent: #c084fc;
+    --accent-bg: rgba(192, 132, 252, 0.15);
+    --accent-border: rgba(192, 132, 252, 0.5);
+    --social-bg: rgba(47, 48, 58, 0.5);
+    --shadow: rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  }
+
+  #social .button-icon {
+    filter: invert(1) brightness(2);
+  }
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+h1 {
+  font-size: 56px;
+  letter-spacing: -1.68px;
+  margin: 32px 0;
+  @media (max-width: 1024px) {
+    font-size: 36px;
+    margin: 20px 0;
+  }
+}
+h2 {
+  font-size: 24px;
+  line-height: 118%;
+  letter-spacing: -0.24px;
+  margin: 0 0 8px;
+  @media (max-width: 1024px) {
+    font-size: 20px;
+  }
+}
+p {
+  margin: 0;
+}
+
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+}
+
+code {
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}
+/* Button focus ring polish + glass effect consistency */
+button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
