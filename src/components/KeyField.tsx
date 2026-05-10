@@ -1,17 +1,22 @@
-import { Copy, Check, AlertCircle, Key } from 'lucide-react';
 import { useState } from 'react';
-import toast from 'react-hot-toast';
-import { isValidWireGuardKey } from '../utils/crypto';
+import { Copy, Eye, EyeOff, AlertCircle, Key } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import type { ValidationResult } from '../utils/validators';
 
 interface KeyFieldProps {
   label: string;
   value: string;
   onChange?: (value: string) => void;
   onGenerate?: () => void;
-  readonly?: boolean;
   placeholder?: string;
-  showGenerateButton?: boolean;
+  isSensitive?: boolean;
+  defaultHidden?: boolean;
+  readonly?: boolean;
   generateButtonText?: string;
+  showGenerateButton?: boolean;
+  /** Validation error message (if any) */
+  error?: string;
+  validator?: (value: string) => ValidationResult;
 }
 
 export function KeyField({
@@ -19,86 +24,134 @@ export function KeyField({
   value,
   onChange,
   onGenerate,
+  placeholder = 'Enter key...',
+  isSensitive = false,
+  defaultHidden = false,
   readonly = false,
-  placeholder,
+  generateButtonText = 'Generate',
   showGenerateButton = true,
-  generateButtonText = "Generate",
+  error = '',
+  validator,
 }: KeyFieldProps) {
+  const [showKey, setShowKey] = useState(!defaultHidden && !isSensitive);
   const [copied, setCopied] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
 
   const copyToClipboard = async () => {
     if (!value) return;
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    toast.success(`${label} copied!`);
-    setTimeout(() => setCopied(false), 1800);
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      toast.success(`${label} copied! (will clear in 15s)`);
+
+      if (isSensitive) {
+        setTimeout(async () => {
+          await navigator.clipboard.writeText('');
+          toast('Clipboard cleared for security', { icon: '🛡️' });
+        }, 15000);
+      }
+
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy');
+    }
   };
 
-  const isValid = value.length === 0 || isValidWireGuardKey(value);
+  //   const isEmpty = !value;
+  const validation = validator?.(value);
+  const validationError = validation && !validation.isValid ? validation.error : undefined;
+  const errorMessage = error || validationError;
+  const hasError = !!value.trim() && !!errorMessage;
 
   return (
     <div className="mb-6">
-      <div className="flex justify-between items-center mb-2.5">
-        <label className="text-sm font-semibold text-zinc-200 tracking-wide">
-          {label}
-        </label>
+      {/* Header */}
+      <div className="mb-2.5 flex items-center justify-between">
+        <label className="text-sm font-semibold tracking-wide text-zinc-200">{label}</label>
 
-        {onGenerate && showGenerateButton && (
-          <button
-            onClick={onGenerate}
-            className="px-4 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded-xl transition-all duration-200 shadow-sm flex items-center gap-1.5"
-          >
-            <Key size={12} />
-            {generateButtonText}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {isSensitive && (
+            <button
+              type="button"
+              onClick={() => setShowKey(!showKey)}
+              className="flex items-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-zinc-200"
+              aria-label={showKey ? `Hide ${label}` : `Show ${label}`}
+            >
+              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+              <span>{showKey ? 'Hide' : 'Show'}</span>
+            </button>
+          )}
+
+          {onGenerate && showGenerateButton && (
+            <button
+              onClick={onGenerate}
+              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-semibold shadow-sm transition-all duration-200 hover:bg-emerald-500 active:bg-emerald-700"
+            >
+              <Key size={14} />
+              {generateButtonText}
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Input Container */}
       <div className="relative">
         <input
-          type="text"
+          type={isSensitive && !showKey ? 'password' : 'text'}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
           readOnly={readonly}
           placeholder={placeholder}
           spellCheck={false}
           autoComplete="off"
-          className={`w-full font-mono bg-zinc-950 border-2 rounded-xl px-4 py-3 text-[14px] text-white placeholder:text-zinc-500 transition-all focus:outline-none ${
-            value
-              ? isValid
-                ? 'border-green-600 focus:border-green-500'
-                : 'border-red-600 focus:border-red-500'
-              : 'border-zinc-700 focus:border-zinc-500'
+          aria-label={label}
+          aria-invalid={hasError}
+          className={`w-full rounded-xl border-2 bg-zinc-950 px-4 py-3 pr-12 font-mono text-[14px] text-white transition-all placeholder:text-zinc-500 focus:outline-none ${
+            !value.trim()
+              ? 'border-zinc-700 focus:border-zinc-500'
+              : hasError
+                ? 'border-red-600 focus:border-red-500'
+                : 'border-green-600 focus:border-green-500'
           }`}
         />
 
+        {/* Copy Button */}
         {value && (
           <button
+            type="button"
             onClick={copyToClipboard}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-zinc-400 hover:text-white transition-colors rounded-lg hover:bg-zinc-800"
-            title="Copy to clipboard"
+            className="absolute top-1/2 right-3 -translate-y-1/2 p-2 text-zinc-400 transition-colors hover:text-white"
+            aria-label={`Copy ${label}`}
           >
-            {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
+            <Copy size={18} className={copied ? 'text-emerald-500' : ''} />
           </button>
         )}
 
-        {value && !isValid && (
+        {/* Validation Error Icon */}
+        {hasError && (
           <div
-            className="absolute right-12 top-1/2 -translate-y-1/2"
+            className="absolute inset-y-0 right-12 my-auto flex items-center text-red-500"
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
           >
-            <AlertCircle className="text-red-500 cursor-help" size={18} />
+            <AlertCircle size={18} className="cursor-help" aria-label="Invalid input" />
             {showTooltip && (
-              <div className="absolute right-0 top-full mt-2 px-3 py-2 bg-zinc-800 text-white text-xs rounded-lg whitespace-nowrap z-10 border border-zinc-600">
-                Invalid WireGuard key format
-                <div className="absolute -top-1 right-3 w-2 h-2 bg-zinc-800 border-l border-t border-zinc-600 transform rotate-45"></div>
+              <div className="absolute top-full right-0 z-10 mt-2 rounded-lg border border-zinc-600 bg-zinc-800 px-3 py-2 text-xs whitespace-nowrap text-white">
+                {errorMessage}
+                <div className="absolute -top-1 right-3 h-2 w-2 rotate-45 transform border-t border-l border-zinc-600 bg-zinc-800"></div>
               </div>
             )}
           </div>
         )}
       </div>
+
+      {/* Error Message */}
+      {hasError && (
+        <p className="mt-1.5 flex items-center gap-1 text-sm text-red-400" role="alert">
+          <AlertCircle size={14} />
+          {errorMessage}
+        </p>
+      )}
     </div>
   );
 }

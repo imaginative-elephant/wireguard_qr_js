@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { KeyField } from './KeyField';
 import { generateKeyPair, generatePresharedKey, derivePubKey } from '../utils/crypto';
+import { validateWireGuardKey } from '../utils/validators';
 import toast from 'react-hot-toast';
 
 export default function KeyGenerator() {
@@ -26,8 +27,14 @@ export default function KeyGenerator() {
       setPresharedKey(psk);
       toast.success('Pre-shared key generated');
     } catch (error) {
+      console.error(error);
       toast.error('Failed to generate PSK');
     }
+  };
+
+  const validateOptionalWireGuardKey = (key: string, fieldName: string) => {
+    if (!key.trim()) return { isValid: true };
+    return validateWireGuardKey(key, fieldName);
   };
 
   const handleDerivePublicKey = () => {
@@ -40,32 +47,30 @@ export default function KeyGenerator() {
       setPublicKey(pub);
       toast.success('Public key derived successfully');
     } catch (error) {
+      console.error(error);
       toast.error('Invalid private key');
     }
   };
 
   return (
-    <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-      <h2 className="text-xl font-semibold mb-6 text-white">Key Generator</h2>
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+      <h2 className="mb-6 text-xl font-semibold text-white">Key Generator</h2>
 
       <KeyField
         label="Private Key"
         value={privateKey}
         onChange={setPrivateKey}
         onGenerate={handleGenerateKeyPair}
+        isSensitive
+        validator={(value) => validateWireGuardKey(value, 'Private Key')}
       />
 
-      <KeyField
-        label="Public Key"
-        value={publicKey}
-        onChange={setPublicKey}
-        readonly
-      />
+      <KeyField label="Public Key" value={publicKey} onChange={setPublicKey} readonly />
 
       <button
         onClick={handleDerivePublicKey}
         disabled={!privateKey}
-        className="w-full mb-6 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 transition rounded-lg"
+        className="mb-6 w-full rounded-lg bg-zinc-800 py-2 text-sm transition hover:bg-zinc-700 disabled:opacity-50"
       >
         Derive Public Key from Private
       </button>
@@ -75,9 +80,11 @@ export default function KeyGenerator() {
         value={presharedKey}
         onChange={setPresharedKey}
         onGenerate={handleGeneratePSK}
+        isSensitive
+        validator={(value) => validateOptionalWireGuardKey(value, 'Pre-Shared Key')}
       />
 
-      <p className="text-xs text-zinc-500 mt-4">
+      <p className="mt-4 text-xs text-zinc-500">
         All keys are generated in your browser. Nothing is sent to any server.
       </p>
     </div>
