@@ -145,3 +145,52 @@ describe('validators', () => {
     });
   });
 });
+
+// Additional tests to add
+
+describe('validateEndpoint', () => {
+  it('should reject malformed IPv6 without brackets', () => {
+    const result = validateEndpoint('2001:db8::1:51820');
+    expect(result.isValid).toBe(false);
+  });
+
+  it('should reject port with leading zeros in some contexts if desired', () => {
+    // optional - most accept 051820
+  });
+
+  it('should reject invalid hostname characters', () => {
+    const result = validateEndpoint('invalid@host.com:51820');
+    expect(result.isValid).toBe(false);
+  });
+});
+
+describe('validateAllowedIPs', () => {
+  it('should reject IPv4 with octet > 255', () => {
+    const result = validateAllowedIPs('256.1.2.3/24');
+    expect(result.isValid).toBe(false);
+  });
+
+  it('should reject CIDR with prefix too large', () => {
+    expect(validateAllowedIPs('10.0.0.0/33').isValid).toBe(false);
+    expect(validateAllowedIPs('::/129').isValid).toBe(false);
+  });
+
+  it('should handle whitespace gracefully', () => {
+    const result = validateAllowedIPs('  10.0.0.0/8  ,  fd00::/8  ');
+    expect(result.isValid).toBe(true);
+  });
+
+  it('should reject malformed CIDR (no slash)', () => {
+    expect(validateAllowedIPs('192.168.1.0').isValid).toBe(false);
+  });
+});
+
+describe('validateDNS', () => {
+  it('should reject IPv4 with invalid octet', () => {
+    expect(validateDNS('256.256.256.256').isValid).toBe(false);
+  });
+
+  it('should reject domains/hostnames', () => {
+    expect(validateDNS('dns.google, 1.1.1.1').isValid).toBe(false);
+  });
+});

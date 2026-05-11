@@ -1,97 +1,100 @@
-import { x25519 } from '@noble/curves/ed25519.js'
+import { x25519 } from '@noble/curves/ed25519.js';
 
 export interface KeyPair {
-  privateKey: string
-  publicKey: string
+  privateKey: string;
+  publicKey: string;
 }
 
 export interface PSK {
-  presharedKey: string
+  presharedKey: string;
 }
 
-/**
- * Convert Uint8Array to base64 string (WireGuard format)
- */
+/** More robust/performant Base64 conversion (avoids String.fromCharCode spread issues) */
 function bytesToBase64(bytes: Uint8Array): string {
-  return btoa(String.fromCharCode(...bytes))
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 /**
  * Convert base64 string to Uint8Array
  */
 function base64ToBytes(base64: string): Uint8Array {
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
+  const binary = atob(base64.trim());
+  const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i)
+    bytes[i] = binary.charCodeAt(i);
   }
-  return bytes
+  return bytes;
 }
 
 /**
- * Generate a new WireGuard key pair using Curve25519 (X25519)
- * Uses the native Web Crypto API for key generation
+ * Generate a new WireGuard X25519 key pair
+ * Prefers Web Crypto API when available, falls back to @noble/curves
  */
-// export async function generateKeyPair(): Promise<KeyPair> {
-//   const keyPair = await crypto.subtle.generateKey(
-//     { name: 'X25519' },
-//     true, // extractable
-//     ['deriveKey', 'deriveBits']
-//   )
-
-//   // Export as raw bytes
-//   const privateKeyRaw = await crypto.subtle.exportKey('raw', keyPair.privateKey)
-//   const publicKeyRaw = await crypto.subtle.exportKey('raw', keyPair.publicKey)
-
-//   return {
-//     privateKey: bytesToBase64(new Uint8Array(privateKeyRaw)),
-//     publicKey: bytesToBase64(new Uint8Array(publicKeyRaw)),
-//   }
-// }
 export async function generateKeyPair(): Promise<KeyPair> {
+  // Try native Web Crypto first (best randomness + performance)
   try {
-    // Generate private key with Web Crypto (strong native randomness)
-    const keyPair = await crypto.subtle.generateKey(
-      { name: 'X25519' },
-      true,                    // extractable
-      ['deriveKey', 'deriveBits']
-    );
+    const keyPair = await crypto.subtle.generateKey({ name: 'X25519' }, true, [
+      'deriveKey',
+      'deriveBits',
+    ]);
 
     const privateKeyRaw = await crypto.subtle.exportKey('raw', keyPair.privateKey);
     const privateKeyBase64 = bytesToBase64(new Uint8Array(privateKeyRaw));
 
-    // Reuse your existing function (this is the reliable part)
     const publicKeyBase64 = derivePubKey(privateKeyBase64);
 
-    console.debug("Key pair generated with Web Crypto");
-    return {
-      privateKey: privateKeyBase64,
-      publicKey: publicKeyBase64,
-    };
+    console.debug('Key pair generated using Web Crypto API');
+    return { privateKey: privateKeyBase64, publicKey: publicKeyBase64 };
   } catch (error) {
-    console.warn("Web Crypto X25519 export failed, falling back to @noble/curves:", error);
-  // Fallback: Pure noble (very reliable)
+    console.warn('Web Crypto X25519 not supported, falling back to @noble/curves:', error);
+  }
+
+  // Fallback using @noble/curves
   try {
     const privateKeyBytes = x25519.utils.randomSecretKey();
     const privateKeyBase64 = bytesToBase64(privateKeyBytes);
     const publicKeyBase64 = derivePubKey(privateKeyBase64);
 
-    console.debug("Key pair generated with @noble/curves fallback");
+    console.debug('Key pair generated using @noble/curves');
     return { privateKey: privateKeyBase64, publicKey: publicKeyBase64 };
   } catch (error) {
-    console.error("Both key generation methods failed:", error);
-    throw new Error("Failed to generate WireGuard key pair");
+    console.error('Key generation failed:', error);
+    throw new Error('Failed to generate WireGuard key pair. Please try again.', {
+      cause: error,
+    });
   }
-}
 }
 
 /**
- * Generate a preshared key (32 random bytes)
+ * Generate a 32-byte WireGuard preshared key
  */
 export function generatePresharedKey(): PSK {
-  const randomBytes = crypto.getRandomValues(new Uint8Array(32))
-  return {
-    presharedKey: bytesToBase64(randomBytes),
+  const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+  return { presharedKey: bytesToBase64(randomBytes) };
+}
+
+/** Strict WireGuard key validation (44 chars, correct Base64, 32 bytes decoded) */
+export function isValidWireGuardKey(key: string): boolean {
+  if (typeof key !== 'string' || key.trim().length !== 44) {
+    return false;
+  }
+
+  const trimmed = key.trim();
+
+  // More precise regex matching WireGuard key format
+  if (!/^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw480]=$/.test(trimmed)) {
+    return false;
+  }
+
+  try {
+    return base64ToBytes(trimmed).length === 32;
+  } catch {
+    return false;
   }
 }
 
@@ -99,30 +102,14 @@ export function generatePresharedKey(): PSK {
  * Validate if a string is a valid WireGuard private key
  */
 export function isValidPrivateKey(key: string): boolean {
-  try {
-    if (!key || key.length !== 44) return false
-    // Base64 check
-    if (!/^[A-Za-z0-9+/]+=*$/.test(key)) return false
-    const decoded = base64ToBytes(key)
-    return decoded.length === 32
-  } catch {
-    return false
-  }
+  return isValidWireGuardKey(key);
 }
 
 /**
  * Validate if a string is a valid WireGuard public key
  */
 export function isValidPublicKey(key: string): boolean {
-  try {
-    if (!key || key.length !== 44) return false
-    // Base64 check
-    if (!/^[A-Za-z0-9+/]+=*$/.test(key)) return false
-    const decoded = base64ToBytes(key)
-    return decoded.length === 32
-  } catch {
-    return false
-  }
+  return isValidWireGuardKey(key);
 }
 
 /**
@@ -130,24 +117,20 @@ export function isValidPublicKey(key: string): boolean {
  */
 export function derivePubKey(privateKeyBase64: string): string {
   try {
-    if (!isValidPrivateKey(privateKeyBase64)) {
-      throw new Error('Invalid private key format')
+    if (!isValidWireGuardKey(privateKeyBase64)) {
+      throw new Error('Invalid private key');
     }
 
-    const privateKeyBytes = base64ToBytes(privateKeyBase64)
+    const privateKeyBytes = base64ToBytes(privateKeyBase64);
+    const publicKeyBytes = x25519.getPublicKey(privateKeyBytes);
 
-    // Use @noble/curves x25519 getPublicKey to derive the public key
-    // x25519.getPublicKey takes a private key and returns the public key
-    const publicKeyBytes = x25519.getPublicKey(privateKeyBytes)
-
-    return bytesToBase64(publicKeyBytes)
+    return bytesToBase64(publicKeyBytes);
   } catch (error) {
-    throw new Error(`Failed to derive public key: ${error}`)
+    throw new Error(
+      `Failed to derive public key: ${error instanceof Error ? error.message : String(error)}`,
+      {
+        cause: error,
+      }
+    );
   }
-}
-
-/** Validate WireGuard key format (44 chars base64 with padding) */
-export function isValidWireGuardKey(key: string): boolean {
-  if (!key || typeof key !== 'string') return false;
-  return /^[A-Za-z0-9+/]{43}[=]{1}$/.test(key);
 }
