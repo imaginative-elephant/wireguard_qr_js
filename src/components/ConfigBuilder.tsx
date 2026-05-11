@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { KeyField } from './KeyField';
 import { QRDisplay } from './QRDisplay';
@@ -55,9 +55,7 @@ const ValidatedInput = ({
         placeholder={placeholder}
         className={inputClass(!validation.isValid)}
       />
-      {!validation.isValid && (
-        <p className="mt-1 text-sm text-red-400">{validation.error}</p>
-      )}
+      {!validation.isValid && <p className="mt-1 text-sm text-red-400">{validation.error}</p>}
     </>
   );
 };
@@ -74,14 +72,7 @@ export function ConfigBuilder() {
   const [peers, setPeers] = useState<Peer[]>([{ ...DEFAULT_PEER }]);
   const [nextPeerId, setNextPeerId] = useState(2);
 
-  const [fullConfig, setFullConfig] = useState('');
-
-  const validateOptionalWireGuardKey = (key: string, fieldName: string) => {
-    if (!key.trim()) return { isValid: true };
-    return validateWireGuardKey(key, fieldName);
-  };
-
-  useEffect(() => {
+  const fullConfig = useMemo(() => {
     let config = '[Interface]\n';
     if (interfacePrivateKey) config += `PrivateKey = ${interfacePrivateKey}\n`;
     if (address) config += `Address = ${address}\n`;
@@ -97,8 +88,13 @@ export function ConfigBuilder() {
       if (peer.persistentKeepalive) config += `PersistentKeepalive = ${peer.persistentKeepalive}\n`;
     });
 
-    setFullConfig(config.trim());
+    return config.trim();
   }, [interfacePrivateKey, address, dns, mtu, peers]);
+
+  const validateOptionalWireGuardKey = (key: string, fieldName: string) => {
+    if (!key.trim()) return { isValid: true };
+    return validateWireGuardKey(key, fieldName);
+  };
 
   const handleGenerateInterfaceKeys = async () => {
     try {
@@ -107,6 +103,7 @@ export function ConfigBuilder() {
       setInterfacePublicKey(publicKey);
       toast.success('Interface keys generated');
     } catch (error) {
+      console.error(error);
       toast.error('Failed to generate keys');
     }
   };
@@ -148,6 +145,7 @@ export function ConfigBuilder() {
       updatePeer(peerId, { presharedKey });
       toast.success('Pre-shared key generated');
     } catch (error) {
+      console.error(error);
       toast.error('Failed to generate pre-shared key');
     }
   };
@@ -181,14 +179,14 @@ export function ConfigBuilder() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+    <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
         {/* Left: Config Form */}
         <div className="space-y-8">
           {/* Interface Card */}
-          <div className="bg-zinc-900 rounded-3xl p-8 border border-zinc-800">
-            <h2 className="text-2xl font-semibold mb-6 text-white flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+          <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
+            <h2 className="mb-6 flex items-center gap-2 text-2xl font-semibold text-white">
+              <span className="h-2 w-2 rounded-full bg-blue-500"></span>
               Interface Configuration
             </h2>
 
@@ -212,19 +210,19 @@ export function ConfigBuilder() {
                 showGenerateButton={false}
               />
 
-              <div className="flex justify-center mb-6">
+              <div className="mb-6 flex justify-center">
                 <button
                   onClick={handleDeriveInterfacePubKey}
                   disabled={!interfacePrivateKey}
-                  className="px-6 py-2 text-sm font-medium bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-200 border border-zinc-700"
+                  className="rounded-xl border border-zinc-700 bg-zinc-800 px-6 py-2 text-sm font-medium transition-all duration-200 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Derive Public Key from Private
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="text-sm text-zinc-300 mb-2 block font-medium">Address</label>
+                  <label className="mb-2 block text-sm font-medium text-zinc-300">Address</label>
                   <ValidatedInput
                     value={address}
                     validator={validateAllowedIPs}
@@ -233,7 +231,7 @@ export function ConfigBuilder() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-zinc-300 mb-2 block font-medium">DNS</label>
+                  <label className="mb-2 block text-sm font-medium text-zinc-300">DNS</label>
                   <ValidatedInput
                     value={dns}
                     validator={validateDNS}
@@ -244,15 +242,15 @@ export function ConfigBuilder() {
               </div>
 
               <div className="mt-4">
-                <label className="text-sm text-zinc-400 mb-2 block font-medium">MTU (optional)</label>
+                <label className="mb-2 block text-sm font-medium text-zinc-400">
+                  MTU (optional)
+                </label>
                 <input
                   type="text"
                   value={mtu}
                   onChange={(e) => setMtu(e.target.value)}
                   placeholder="1420"
-                  className="w-full bg-zinc-950 border border-zinc-600 focus:border-blue-500
-                           text-white placeholder:text-zinc-500 rounded-xl px-4 py-3
-                           text-[14px] outline-none transition-all"
+                  className="w-full rounded-xl border border-zinc-600 bg-zinc-950 px-4 py-3 text-[14px] text-white transition-all outline-none placeholder:text-zinc-500 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -260,16 +258,16 @@ export function ConfigBuilder() {
 
           {/* Peers Section */}
           {peers.map((peer, index) => (
-            <div key={peer.id} className="bg-zinc-900 rounded-3xl p-8 border border-zinc-800">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
-                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+            <div key={peer.id} className="rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-2xl font-semibold text-white">
+                  <span className="h-2 w-2 rounded-full bg-green-500"></span>
                   Peer {index + 1}
                 </h2>
                 {peers.length > 1 && (
                   <button
                     onClick={() => removePeer(peer.id)}
-                    className="p-2 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded-lg transition-all duration-200"
+                    className="rounded-lg p-2 text-red-400 transition-all duration-200 hover:bg-red-500/20 hover:text-red-300"
                     title="Remove this peer"
                   >
                     <Trash2 size={18} />
@@ -299,9 +297,9 @@ export function ConfigBuilder() {
                   validator={(value) => validateOptionalWireGuardKey(value, 'Pre-Shared Key')}
                 />
 
-                <div className="space-y-4 mt-6">
+                <div className="mt-6 space-y-4">
                   <div>
-                    <label className="text-sm text-zinc-300 mb-2 block font-medium">Endpoint</label>
+                    <label className="mb-2 block text-sm font-medium text-zinc-300">Endpoint</label>
                     <ValidatedInput
                       value={peer.endpoint}
                       validator={validateEndpoint}
@@ -311,7 +309,9 @@ export function ConfigBuilder() {
                   </div>
 
                   <div>
-                    <label className="text-sm text-zinc-300 mb-2 block font-medium">Allowed IPs</label>
+                    <label className="mb-2 block text-sm font-medium text-zinc-300">
+                      Allowed IPs
+                    </label>
                     <ValidatedInput
                       value={peer.allowedIPs}
                       validator={validateAllowedIPs}
@@ -321,17 +321,15 @@ export function ConfigBuilder() {
                   </div>
 
                   <div>
-                    <label className="text-sm text-zinc-300 mb-2 block font-medium">Persistent Keepalive</label>
+                    <label className="mb-2 block text-sm font-medium text-zinc-300">
+                      Persistent Keepalive
+                    </label>
                     <input
                       type="number"
                       value={peer.persistentKeepalive}
-                      onChange={(e) =>
-                        updatePeer(peer.id, { persistentKeepalive: e.target.value })
-                      }
+                      onChange={(e) => updatePeer(peer.id, { persistentKeepalive: e.target.value })}
                       placeholder="25"
-                      className="w-full bg-zinc-950 border border-zinc-600 focus:border-blue-500
-                               text-white placeholder:text-zinc-500 rounded-xl px-4 py-3
-                               text-[14px] outline-none transition-all"
+                      className="w-full rounded-xl border border-zinc-600 bg-zinc-950 px-4 py-3 text-[14px] text-white transition-all outline-none placeholder:text-zinc-500 focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -342,25 +340,25 @@ export function ConfigBuilder() {
           {/* Add Peer Button */}
           <button
             onClick={addPeer}
-            className="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-2xl transition-all duration-200 flex items-center justify-center gap-2"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-green-600 py-4 font-semibold text-white transition-all duration-200 hover:bg-green-500"
           >
             <Plus size={20} />
             Add Another Peer
           </button>
 
           {/* Action Buttons */}
-          <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
-            <h3 className="text-lg font-semibold mb-4 text-white">Actions</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+            <h3 className="mb-4 text-lg font-semibold text-white">Actions</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 onClick={clearAll}
-                className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-xl transition-all duration-200 border border-zinc-700"
+                className="rounded-xl border border-zinc-700 bg-zinc-800 px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-zinc-700"
               >
                 Clear All
               </button>
               <button
                 onClick={loadExample}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-xl transition-all duration-200"
+                className="rounded-xl bg-blue-600 px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-blue-500"
               >
                 Load Example
               </button>
@@ -376,4 +374,3 @@ export function ConfigBuilder() {
     </div>
   );
 }
-
