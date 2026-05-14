@@ -74,6 +74,24 @@ export function ConfigBuilder() {
   const [peers, setPeers] = useState<Peer[]>([{ ...DEFAULT_PEER }]);
   const [nextPeerId, setNextPeerId] = useState(2);
 
+  const isConfigFullyValid = useMemo(() => {
+    const interfaceValid =
+      interfacePrivateKey.trim().length > 0 &&
+      validateWireGuardKey(interfacePrivateKey, 'Private Key').isValid &&
+      address.trim().length > 0 &&
+      validateAllowedIPs(address).isValid;
+
+    const peersValid = peers.every(
+      (peer) =>
+        peer.publicKey.trim().length > 0 &&
+        validateWireGuardKey(peer.publicKey, 'Peer Public Key').isValid &&
+        peer.endpoint.trim().length > 0 &&
+        validateEndpoint(peer.endpoint).isValid
+    );
+
+    return interfaceValid && peersValid;
+  }, [interfacePrivateKey, address, peers]);
+
   const fullConfig = useMemo(() => {
     let config = '[Interface]\n';
     if (interfacePrivateKey) config += `PrivateKey = ${interfacePrivateKey}\n`;
@@ -136,7 +154,8 @@ export function ConfigBuilder() {
       toast.success('Interface keys generated');
     } catch (error) {
       console.error(error);
-      toast.error('Failed to generate keys');
+      const message = error instanceof Error ? error.message : 'Failed to generate keys';
+      toast.error(message);
     }
   };
 
@@ -146,8 +165,10 @@ export function ConfigBuilder() {
       const pubKey = derivePubKey(interfacePrivateKey);
       setInterfacePublicKey(pubKey);
       toast.success('Public key derived');
-    } catch {
-      toast.error('Invalid private key');
+    } catch (error) {
+      console.error(error);
+      const msg = error instanceof Error ? error.message : 'Invalid private key';
+      toast.error(msg);
     }
   };
 
@@ -178,7 +199,8 @@ export function ConfigBuilder() {
       toast.success('Pre-shared key generated');
     } catch (error) {
       console.error(error);
-      toast.error('Failed to generate pre-shared key');
+      const msg = error instanceof Error ? error.message : 'Failed to generate pre-shared key';
+      toast.error(msg);
     }
   };
 
@@ -253,7 +275,11 @@ export function ConfigBuilder() {
         toast.success('Config loaded successfully');
       } catch (error) {
         console.error('Failed to parse config:', error);
-        toast.error('Failed to parse WireGuard config file');
+        const msg =
+          error instanceof Error
+            ? `Failed to parse WireGuard config file: ${error.message}`
+            : 'Failed to parse WireGuard config file';
+        toast.error(msg);
       }
     };
     reader.readAsText(file);
@@ -267,7 +293,7 @@ export function ConfigBuilder() {
         {/* Left: Config Form */}
         <div className="space-y-8">
           {/* Interface Card */}
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
+          <div className="card rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
             <h2 className="mb-6 flex items-center gap-2 text-2xl font-semibold text-white">
               <span className="h-2 w-2 rounded-full bg-blue-500"></span>
               Interface Configuration
@@ -342,7 +368,7 @@ export function ConfigBuilder() {
 
           {/* Peers Section */}
           {peers.map((peer, index) => (
-            <div key={peer.id} className="rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
+            <div key={peer.id} className="card rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
               <div className="mb-6 flex items-center justify-between">
                 <h2 className="flex items-center gap-2 text-2xl font-semibold text-white">
                   <span className="h-2 w-2 rounded-full bg-green-500"></span>
@@ -428,7 +454,7 @@ export function ConfigBuilder() {
           </button>
 
           {/* Action Buttons */}
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+          <div className="card rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
             <h3 className="mb-4 text-lg font-semibold text-white">Actions</h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
@@ -455,7 +481,8 @@ export function ConfigBuilder() {
               </label>
               <button
                 onClick={handleDownloadConfig}
-                disabled={!fullConfig.trim()}
+                // disabled={!fullConfig.trim()}
+                disabled={!isConfigFullyValid}
                 className={downloadConfigButton}
               >
                 <Download size={16} />
