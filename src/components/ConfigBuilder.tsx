@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, RotateCcw, FileText, Upload, Download, Key } from 'lucide-react';
 import { KeyField } from './KeyField';
 import { QRDisplay } from './QRDisplay';
 import { generateKeyPair, derivePubKey, generatePresharedKey } from '../utils/crypto';
@@ -9,6 +9,8 @@ import {
   validateAllowedIPs,
   validateDNS,
 } from '../utils/validators';
+import { downloadWireGuardConfig } from '../utils/download';
+import { parseWireGuardConfig } from '../utils/configParser';
 import toast from 'react-hot-toast';
 
 interface Peer {
@@ -90,6 +92,36 @@ export function ConfigBuilder() {
 
     return config.trim();
   }, [interfacePrivateKey, address, dns, mtu, peers]);
+
+  // Action Buttons
+  const buttonBase =
+    'flex items-center justify-center gap-2 border ' +
+    'active:scale-[0.985] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 '; // needs a trailing space
+  const actionButton = buttonBase + 'rounded-xl px-6 py-3 font-medium ';
+
+  const clearAllButton =
+    actionButton +
+    'border-red-ochre-600/30 bg-gradient-to-r from-red-ochre-800/70 to-red-ochre-700/70 text-red-ochre-100 shadow-lg shadow-red-ochre-900/20 hover:from-red-ochre-700/80 hover:to-red-ochre-600/80 focus-visible:ring-offset-zinc-950 focus-visible:ring-red-ochre-500/40';
+
+  const loadExampleButton =
+    actionButton +
+    'border-blue-slate-600/30 bg-gradient-to-r from-blue-slate-800/70 to-blue-slate-500/70 text-blue-slate-100 shadow-lg shadow-blue-slate-900/20 hover:from-blue-slate-700/80 hover:to-blue-slate-600/80 focus-visible:ring-offset-zinc-950 focus-visible:ring-pale-blue-500/40';
+
+  const uploadConfigButton =
+    actionButton +
+    'col-span-full cursor-pointer rounded-xl border-amethyst-smoke-500/30 bg-gradient-to-r from-amethyst-smoke-700/70 to-amethyst-smoke-600/70 text-amethyst-smoke-100 shadow-lg shadow-amethyst-smoke-800/20 hover:from-amethyst-smoke-600/80 hover:to-amethyst-smoke-500/80 focus-visible:ring-offset-zinc-950 focus-visible:ring-amethyst-smoke-400/40';
+
+  const downloadConfigButton =
+    actionButton +
+    'col-span-full border-emerald-500/30 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-500 hover:to-emerald-600 focus-visible:ring-offset-zinc-950 focus-visible:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-60';
+
+  const addPeerButton =
+    buttonBase +
+    'w-full rounded-2xl border-emerald-600/30 bg-gradient-to-r from-emerald-700/80 to-emerald-600/80 py-4 font-semibold text-emerald-100 shadow-lg shadow-emerald-900/20 hover:from-emerald-600/90 hover:to-emerald-500/90 hover:border-emerald-500 focus-visible:ring-offset-zinc-950 focus-visible:ring-emerald-400';
+
+  const derivePublicKeyButton =
+    buttonBase +
+    'rounded-xl border-zinc-400/50 bg-gradient-to-r from-zinc-900/50 to-zinc-800/50 px-6 py-2 text-sm font-medium text-zinc-400 hover:border-zinc-500 hover:from-zinc-800/70 hover:to-zinc-700/70 hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-offset-zinc-950 focus-visible:ring-zinc-400';
 
   const validateOptionalWireGuardKey = (key: string, fieldName: string) => {
     if (!key.trim()) return { isValid: true };
@@ -178,6 +210,57 @@ export function ConfigBuilder() {
     toast.success('Example loaded');
   };
 
+  const handleDownloadConfig = () => {
+    if (!fullConfig.trim()) {
+      toast.error('No config to download');
+      return;
+    }
+    downloadWireGuardConfig(fullConfig, 'wireguard-client.conf');
+    toast.success('Config downloaded');
+  };
+
+  const handleUploadConfig = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const parsedConfig = parseWireGuardConfig(content);
+
+        // Load interface
+        setInterfacePrivateKey(parsedConfig.interface.privateKey || '');
+        setInterfacePublicKey(''); // Will be derived if private key exists
+        setAddress(parsedConfig.interface.address || '');
+        setDns(parsedConfig.interface.dns || '');
+        setMtu(parsedConfig.interface.mtu?.toString() || '');
+
+        // Load peers
+        if (parsedConfig.peers.length > 0) {
+          const loadedPeers: Peer[] = parsedConfig.peers.map((peer, index) => ({
+            id: (index + 1).toString(),
+            publicKey: peer.publicKey || '',
+            endpoint: peer.endpoint || '',
+            allowedIPs: peer.allowedIps || '',
+            persistentKeepalive: peer.persistentKeepalive?.toString() || '25',
+            presharedKey: peer.presharedKey || '',
+          }));
+          setPeers(loadedPeers);
+          setNextPeerId(loadedPeers.length + 1);
+        }
+
+        toast.success('Config loaded successfully');
+      } catch (error) {
+        console.error('Failed to parse config:', error);
+        toast.error('Failed to parse WireGuard config file');
+      }
+    };
+    reader.readAsText(file);
+    // Reset the input
+    event.target.value = '';
+  };
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
@@ -214,8 +297,9 @@ export function ConfigBuilder() {
                 <button
                   onClick={handleDeriveInterfacePubKey}
                   disabled={!interfacePrivateKey}
-                  className="rounded-xl border border-zinc-700 bg-zinc-800 px-6 py-2 text-sm font-medium transition-all duration-200 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={derivePublicKeyButton}
                 >
+                  <Key size={14} />
                   Derive Public Key from Private
                 </button>
               </div>
@@ -338,10 +422,7 @@ export function ConfigBuilder() {
           ))}
 
           {/* Add Peer Button */}
-          <button
-            onClick={addPeer}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-green-600 py-4 font-semibold text-white transition-all duration-200 hover:bg-green-500"
-          >
+          <button onClick={addPeer} className={addPeerButton}>
             <Plus size={20} />
             Add Another Peer
           </button>
@@ -352,15 +433,33 @@ export function ConfigBuilder() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 onClick={clearAll}
-                className="rounded-xl border border-zinc-700 bg-zinc-800 px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-zinc-700"
+                className={clearAllButton}
+                // className="flex items-center justify-center gap-2 rounded-xl border-red-500/30 bg-zinc-800/80 px-6 py-3 font-medium text-red-400 transition-all duration-200 hover:bg-red-950 hover:border-red-500/50 hover:text-red-300 active:bg-red-900"
               >
+                <RotateCcw size={16} />
                 Clear All
               </button>
-              <button
-                onClick={loadExample}
-                className="rounded-xl bg-blue-600 px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-blue-500"
-              >
+              <button onClick={loadExample} className={loadExampleButton}>
+                <FileText size={16} />
                 Load Example
+              </button>
+              <label className={uploadConfigButton}>
+                <input
+                  type="file"
+                  accept=".conf"
+                  onChange={handleUploadConfig}
+                  className="hidden"
+                />
+                <Upload size={16} />
+                Upload Config (.conf)
+              </label>
+              <button
+                onClick={handleDownloadConfig}
+                disabled={!fullConfig.trim()}
+                className={downloadConfigButton}
+              >
+                <Download size={16} />
+                Download Config (.conf)
               </button>
             </div>
           </div>
