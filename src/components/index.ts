@@ -1,4 +1,3 @@
-export { default as KeyGenerator } from './KeyGenerator';
 export { QRDisplay } from './QRDisplay';
-export { ConfigForm } from './ConfigForm';
+export { KeyField } from './KeyField';
 export { ConfigBuilder } from './ConfigBuilder';
