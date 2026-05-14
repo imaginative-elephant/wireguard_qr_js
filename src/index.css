@@ -87,6 +87,14 @@
   --color-amethyst-smoke-800: oklch(29.11% 0.048 299.35);
   --color-amethyst-smoke-900: oklch(19.94% 0.027 301.69);
   --color-amethyst-smoke-950: oklch(16.87% 0.019 304.69);
+
+  --font-size-h1: 56px;
+  --letter-spacing-h1: -1.68px;
+  --font-size-h1-md: 36px;
+
+  --font-size-h2: 24px;
+  --letter-spacing-h2: -0.24px;
+  --font-size-h2-md: 20px;
 }
 
 #root {
@@ -98,14 +106,49 @@
   flex-direction: column;
   box-sizing: border-box;
 }
+/* Typography – using your preferred sizes + Tailwind utilities */
+h1,
+h2 {
+  font-family: var(--heading, system-ui, sans-serif);
+  font-weight: 600;
+  color: var(--text-h, #f3f4f6);
+  line-height: 1.1;
+}
 
-/* Remove or reduce the huge default font sizes from index.css if they feel off */
 h1 {
-  font-size: 2.5rem;
+  font-size: var(--font-size-h1);
+  letter-spacing: var(--letter-spacing-h1);
+  margin: 32px 0;
 }
 
 h2 {
-  font-size: 1.75rem;
+  font-size: var(--font-size-h2);
+  letter-spacing: var(--letter-spacing-h2);
+  margin:
+    0 0 12px,
+    0;
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+@media (max-width: 1024px) {
+  h1 {
+    font-size: 36px;
+    margin: 20px 0;
+  }
+  h2 {
+    font-size: 20px;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -121,24 +164,17 @@ h2 {
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow: rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
   }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+}
+code,
+.counter {
+  font-family: var(--mono, ui-monospace, monospace);
 }
 
-body {
-  margin: 0;
+button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
+/* h1 {
   font-size: 56px;
   letter-spacing: -1.68px;
   margin: 32px 0;
@@ -155,26 +191,4 @@ h2 {
   @media (max-width: 1024px) {
     font-size: 20px;
   }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
-}
-/* Button focus ring polish + glass effect consistency */
-button {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
+} */
