@@ -17,6 +17,7 @@ interface KeyFieldProps {
   /** Validation error message (if any) */
   error?: string;
   validator?: (value: string) => ValidationResult;
+  onBlur?: () => void;
 }
 
 export function KeyField({
@@ -32,10 +33,15 @@ export function KeyField({
   showGenerateButton = true,
   error = '',
   validator,
+  onBlur,
 }: KeyFieldProps) {
   const [showKey, setShowKey] = useState(!defaultHidden && !isSensitive);
   const [copied, setCopied] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+
+  //   const isEmpty = !value;
+  const validation = validator?.(value);
+  const validationError = validation && !validation.isValid ? validation.error : undefined;
 
   const copyToClipboard = async () => {
     if (!value) return;
@@ -57,11 +63,9 @@ export function KeyField({
     }
   };
 
-  //   const isEmpty = !value;
-  const validation = validator?.(value);
-  const validationError = validation && !validation.isValid ? validation.error : undefined;
   const errorMessage = error || validationError;
-  const hasError = !!value.trim() && !!errorMessage;
+  const hasError = !!errorMessage;
+  const isEmpty = !value.trim();
 
   return (
     <div className="mb-6">
@@ -100,6 +104,7 @@ export function KeyField({
           type={isSensitive && !showKey ? 'password' : 'text'}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
+          onBlur={onBlur}
           readOnly={readonly}
           placeholder={placeholder}
           spellCheck={false}
@@ -107,10 +112,10 @@ export function KeyField({
           aria-label={label}
           aria-invalid={hasError}
           className={`w-full rounded-xl border-2 bg-zinc-950 px-4 py-3 pr-12 font-mono text-[14px] text-white transition-all placeholder:text-zinc-500 focus:outline-none ${
-            !value.trim()
-              ? 'border-zinc-700 focus:border-zinc-500'
-              : hasError
-                ? 'border-red-600 focus:border-red-500'
+            hasError
+              ? 'border-red-600 focus:border-red-500'
+              : isEmpty
+                ? 'border-zinc-700 focus:border-zinc-500'
                 : 'border-green-600 focus:border-green-500'
           }`}
         />

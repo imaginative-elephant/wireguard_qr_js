@@ -9,7 +9,7 @@ export interface ValidationResult {
 export function validateWireGuardKey(key: string, fieldName = 'Key'): ValidationResult {
   const trimmed = key?.trim();
   if (!trimmed) {
-    return { isValid: false, error: `${fieldName} is required` };
+    return { isValid: true };
   }
 
   if (trimmed.length !== 44) {
@@ -62,6 +62,10 @@ export function validateEndpoint(endpoint: string): ValidationResult {
     isValid: false,
     error: 'Endpoint must be in format: hostname:port or [IPv4/6]:port',
   };
+}
+/** Interface Address validation (same rules as AllowedIPs) */
+export function validateAddress(address: string): ValidationResult {
+  return validateAllowedIPs(address);
 }
 
 /** AllowedIPs validation */
