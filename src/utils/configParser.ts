@@ -1,27 +1,7 @@
-import { parse, stringify } from 'ini';
+import { parse } from 'ini';
 
 type RawIniSection = Record<string, string | number | undefined>;
-
-export interface WireGuardConfig {
-  interface: InterfaceConfig;
-  peers: PeerConfig[];
-}
-
-export interface InterfaceConfig {
-  address?: string;
-  privateKey?: string;
-  dns?: string;
-  listenPort?: number;
-  mtu?: number;
-}
-
-export interface PeerConfig {
-  publicKey?: string;
-  endpoint?: string;
-  allowedIps?: string;
-  presharedKey?: string;
-  persistentKeepalive?: number;
-}
+import type { WireGuardConfig } from '../types/wireguard';
 
 /**
  * Parse WireGuard .conf file content
@@ -74,38 +54,82 @@ export function parseWireGuardConfig(content: string): WireGuardConfig {
   return config;
 }
 
+const formatValue = (value: string | number | undefined): string | null => {
+  if (value === undefined || value === null) return null;
+  const str = String(value).trim();
+  return str ? str : null;
+};
+
 /**
- * Generate WireGuard .conf file content from config object
+ * Maps JavaScript property names to exact WireGuard config key names
  */
+const keyMap: Record<string, string> = {
+  address: 'Address',
+  privateKey: 'PrivateKey',
+  dns: 'DNS',
+  listenPort: 'ListenPort',
+  mtu: 'MTU',
+
+  publicKey: 'PublicKey',
+  presharedKey: 'PresharedKey',
+  endpoint: 'Endpoint',
+  allowedIps: 'AllowedIPs',
+  persistentKeepalive: 'PersistentKeepalive',
+};
+const buildSection = (
+  header: string,
+  data: Record<string, string | number | undefined>
+): string => {
+  const lines: string[] = [`[${header}]`];
+
+  Object.entries(data).forEach(([key, value]) => {
+    const formattedValue = formatValue(value);
+    if (formattedValue === null) return;
+
+    const wgKey = keyMap[key] || key; // Use mapped name or fallback
+    lines.push(`${wgKey} = ${formattedValue}`);
+  });
+
+  return lines.join('\n');
+};
+
 export function generateWireGuardConfig(config: WireGuardConfig): string {
-  const output: {
-    Interface: Record<string, string | number>;
-    Peer?: Array<Record<string, string | number>>;
-  } = {
-    Interface: {},
-  };
-
-  // Add Interface section
-  if (config.interface.address) output.Interface.Address = config.interface.address;
-  if (config.interface.privateKey) output.Interface.PrivateKey = config.interface.privateKey;
-  if (config.interface.dns) output.Interface.DNS = config.interface.dns;
-  if (config.interface.listenPort) output.Interface.ListenPort = config.interface.listenPort;
-  if (config.interface.mtu) output.Interface.MTU = config.interface.mtu;
-
-  // Add Peer sections
-  if (config.peers.length > 0) {
-    output.Peer = config.peers.map((peer) => {
-      const peerObj: Record<string, string | number> = {};
-      if (peer.publicKey) peerObj.PublicKey = peer.publicKey;
-      if (peer.endpoint) peerObj.Endpoint = peer.endpoint;
-      if (peer.allowedIps) peerObj.AllowedIPs = peer.allowedIps;
-      if (peer.presharedKey) peerObj.PresharedKey = peer.presharedKey;
-      if (peer.persistentKeepalive) peerObj.PersistentKeepalive = peer.persistentKeepalive;
-      return peerObj;
-    });
+  if (!config.interface.privateKey?.trim() || !config.interface.address?.trim()) {
+    return '';
   }
 
-  return stringify(output);
+  const sections: string[] = [];
+
+  // === Interface Section ===
+  sections.push(
+    buildSection('Interface', {
+      address: config.interface.address,
+      privateKey: config.interface.privateKey,
+      dns: config.interface.dns,
+      listenPort: config.interface.listenPort,
+      mtu: config.interface.mtu,
+    })
+  );
+
+  // === Peer Sections ===
+  config.peers
+    .filter((p) => p.publicKey?.trim())
+    .forEach((peer, index) => {
+      const comment = peer.name || peer.comment || `Peer ${index + 1}`;
+      if (comment) sections.push(`# ${comment}`);
+
+      sections.push(
+        buildSection('Peer', {
+          publicKey: peer.publicKey,
+          presharedKey: peer.presharedKey,
+          endpoint: peer.endpoint,
+          allowedIps: peer.allowedIps,
+          persistentKeepalive: peer.persistentKeepalive,
+        })
+      );
+    });
+
+  return sections.join('\n\n');
 }
 
 /**

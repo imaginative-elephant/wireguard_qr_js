@@ -15,10 +15,10 @@ describe('validators', () => {
       expect(result.isValid).toBe(true);
     });
 
-    it('should reject empty key', () => {
+    it('should accept empty key (required check is done in UI/hook)', () => {
       const result = validateWireGuardKey('');
-      expect(result.isValid).toBe(false);
-      expect(result.error).toContain('required');
+      expect(result.isValid).toBe(true);
+      expect(result.error).toBeUndefined();
     });
 
     it('should reject key with wrong length', () => {
@@ -35,7 +35,8 @@ describe('validators', () => {
     });
 
     it('should use custom field name in error', () => {
-      const result = validateWireGuardKey('', 'Private Key');
+      const result = validateWireGuardKey('invalid-key', 'Private Key');
+      expect(result.isValid).toBe(false);
       expect(result.error).toContain('Private Key');
     });
   });

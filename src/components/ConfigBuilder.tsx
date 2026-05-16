@@ -3,24 +3,12 @@ import { Plus, Trash2, RotateCcw, FileText, Upload, Download, Key } from 'lucide
 import { KeyField } from './KeyField';
 import { QRDisplay } from './QRDisplay';
 import { generateKeyPair, derivePubKey, generatePresharedKey } from '../utils/crypto';
-import {
-  validateWireGuardKey,
-  validateEndpoint,
-  validateAllowedIPs,
-  validateDNS,
-} from '../utils/validators';
+import { validateWireGuardKey } from '../utils/validators';
 import { downloadWireGuardConfig } from '../utils/download';
-import { parseWireGuardConfig } from '../utils/configParser';
+import { parseWireGuardConfig, generateWireGuardConfig } from '../utils/configParser';
+import { useValidation } from '../hooks/useValidation';
 import toast from 'react-hot-toast';
-
-interface Peer {
-  id: string;
-  publicKey: string;
-  endpoint: string;
-  allowedIPs: string;
-  persistentKeepalive: string;
-  presharedKey: string;
-}
+import type { Peer } from '../types/wireguard';
 
 const DEFAULT_PEER: Peer = {
   id: '1',
@@ -36,31 +24,31 @@ const inputClass = (hasError: boolean) =>
     hasError ? 'border-red-600 focus:border-red-500' : 'border-zinc-600 focus:border-blue-500'
   }`;
 
-const ValidatedInput = ({
-  value,
-  validator,
-  placeholder,
-  onChange,
-}: {
-  value: string;
-  validator: (val: string) => { isValid: boolean; error?: string };
-  placeholder: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}) => {
-  const validation = validator(value);
-  return (
-    <>
-      <input
-        type="text"
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className={inputClass(!validation.isValid)}
-      />
-      {!validation.isValid && <p className="mt-1 text-sm text-red-400">{validation.error}</p>}
-    </>
-  );
-};
+// const ValidatedInput = ({
+//   value,
+//   validator,
+//   placeholder,
+//   onChange,
+// }: {
+//   value: string;
+//   validator: (val: string) => { isValid: boolean; error?: string };
+//   placeholder: string;
+//   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+// }) => {
+//   const validation = validator(value);
+//   return (
+//     <>
+//       <input
+//         type="text"
+//         value={value}
+//         onChange={onChange}
+//         placeholder={placeholder}
+//         className={inputClass(!validation.isValid)}
+//       />
+//       {!validation.isValid && <p className="mt-1 text-sm text-red-400">{validation.error}</p>}
+//     </>
+//   );
+// };
 
 export function ConfigBuilder() {
   // Interface
@@ -74,41 +62,38 @@ export function ConfigBuilder() {
   const [peers, setPeers] = useState<Peer[]>([{ ...DEFAULT_PEER }]);
   const [nextPeerId, setNextPeerId] = useState(2);
 
-  const isConfigFullyValid = useMemo(() => {
-    const interfaceValid =
-      interfacePrivateKey.trim().length > 0 &&
-      validateWireGuardKey(interfacePrivateKey, 'Private Key').isValid &&
-      address.trim().length > 0 &&
-      validateAllowedIPs(address).isValid;
+  const {
+    errors,
+    isValid: isConfigFullyValid,
+    markTouched,
+  } = useValidation(interfacePrivateKey, address, dns, peers);
 
-    const peersValid = peers.every(
-      (peer) =>
-        peer.publicKey.trim().length > 0 &&
-        validateWireGuardKey(peer.publicKey, 'Peer Public Key').isValid &&
-        peer.endpoint.trim().length > 0 &&
-        validateEndpoint(peer.endpoint).isValid
-    );
-
-    return interfaceValid && peersValid;
-  }, [interfacePrivateKey, address, peers]);
-
+  // deligates to centralized config generator from utils, which handles all formatting and optional fields
   const fullConfig = useMemo(() => {
-    let config = '[Interface]\n';
-    if (interfacePrivateKey) config += `PrivateKey = ${interfacePrivateKey}\n`;
-    if (address) config += `Address = ${address}\n`;
-    if (dns) config += `DNS = ${dns}\n`;
-    if (mtu) config += `MTU = ${mtu}\n`;
+    // Safety guard
+    if (!interfacePrivateKey.trim() || !address.trim()) {
+      return '';
+    }
 
-    peers.forEach((peer) => {
-      config += '\n[Peer]\n';
-      if (peer.publicKey) config += `PublicKey = ${peer.publicKey}\n`;
-      if (peer.presharedKey) config += `PresharedKey = ${peer.presharedKey}\n`;
-      if (peer.endpoint) config += `Endpoint = ${peer.endpoint}\n`;
-      if (peer.allowedIPs) config += `AllowedIPs = ${peer.allowedIPs}\n`;
-      if (peer.persistentKeepalive) config += `PersistentKeepalive = ${peer.persistentKeepalive}\n`;
+    const config = generateWireGuardConfig({
+      interface: {
+        privateKey: interfacePrivateKey.trim(),
+        address: address.trim(),
+        dns: dns.trim() || undefined,
+        mtu: mtu ? parseInt(mtu) : undefined,
+      },
+      peers: peers
+        .filter((p) => p.publicKey.trim().length > 0) // Only valid peers
+        .map((p) => ({
+          publicKey: p.publicKey.trim(),
+          presharedKey: p.presharedKey.trim() || undefined,
+          endpoint: p.endpoint.trim() || undefined,
+          allowedIps: p.allowedIPs.trim() || undefined,
+          persistentKeepalive: p.persistentKeepalive ? parseInt(p.persistentKeepalive) : undefined,
+        })),
     });
 
-    return config.trim();
+    return config;
   }, [interfacePrivateKey, address, dns, mtu, peers]);
 
   // Action Buttons
@@ -140,11 +125,6 @@ export function ConfigBuilder() {
   const derivePublicKeyButton =
     buttonBase +
     'rounded-xl border-zinc-400/50 bg-gradient-to-r from-zinc-900/50 to-zinc-800/50 px-6 py-2 text-sm font-medium text-zinc-400 hover:border-zinc-500 hover:from-zinc-800/70 hover:to-zinc-700/70 hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-offset-zinc-950 focus-visible:ring-zinc-400';
-
-  const validateOptionalWireGuardKey = (key: string, fieldName: string) => {
-    if (!key.trim()) return { isValid: true };
-    return validateWireGuardKey(key, fieldName);
-  };
 
   const handleGenerateInterfaceKeys = async () => {
     try {
@@ -217,7 +197,7 @@ export function ConfigBuilder() {
 
   const loadExample = () => {
     setAddress('10.0.0.2/32');
-    setDns('1.1.1.1, 8.8.8.8');
+    setDns('1.1.1.1, 9.9.9.9');
     setPeers([
       {
         id: '1',
@@ -309,6 +289,8 @@ export function ConfigBuilder() {
                 isSensitive
                 defaultHidden={true}
                 validator={(value) => validateWireGuardKey(value, 'Private Key')}
+                error={errors.interfacePrivateKey}
+                onBlur={() => markTouched('interfacePrivateKey')}
               />
 
               <KeyField
@@ -333,21 +315,27 @@ export function ConfigBuilder() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-zinc-300">Address</label>
-                  <ValidatedInput
+                  <input
+                    type="text"
                     value={address}
-                    validator={validateAllowedIPs}
-                    placeholder="10.0.0.2/32"
                     onChange={(e) => setAddress(e.target.value)}
+                    placeholder="10.0.0.2/32"
+                    className={inputClass(!!errors.address)}
+                    onBlur={() => markTouched('address')}
                   />
+                  {errors.address && <p className="mt-1 text-sm text-red-400">{errors.address}</p>}
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-medium text-zinc-300">DNS</label>
-                  <ValidatedInput
+                  <input
+                    type="text"
                     value={dns}
-                    validator={validateDNS}
-                    placeholder="1.1.1.1, 8.8.8.8"
                     onChange={(e) => setDns(e.target.value)}
+                    placeholder="1.1.1.1, 9.9.9.9"
+                    className={inputClass(!!errors.dns)}
+                    onBlur={() => markTouched('dns')}
                   />
+                  {errors.dns && <p className="mt-1 text-sm text-red-400">{errors.dns}</p>}
                 </div>
               </div>
 
@@ -366,86 +354,115 @@ export function ConfigBuilder() {
             </div>
           </div>
 
-          {/* Peers Section */}
-          {peers.map((peer, index) => (
-            <div key={peer.id} className="card rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-2xl font-semibold text-white">
-                  <span className="h-2 w-2 rounded-full bg-green-500"></span>
-                  Peer {index + 1}
-                </h2>
-                {peers.length > 1 && (
-                  <button
-                    onClick={() => removePeer(peer.id)}
-                    className="rounded-lg p-2 text-red-400 transition-all duration-200 hover:bg-red-500/20 hover:text-red-300"
-                    title="Remove this peer"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                )}
-              </div>
+          {/* ==================== PEERS SECTION ==================== */}
+          {peers.map((peer, index) => {
+            const peerError = errors.peers[peer.id] || {};
 
-              <div className="space-y-1">
-                <KeyField
-                  label="Peer Public Key"
-                  value={peer.publicKey}
-                  onChange={(val) => updatePeer(peer.id, { publicKey: val })}
-                  showGenerateButton={false}
-                  placeholder="Server's public key"
-                  validator={(value) => validateWireGuardKey(value, 'Peer Public Key')}
-                />
+            return (
+              <div
+                key={peer.id}
+                className="card rounded-3xl border border-zinc-800 bg-zinc-900 p-8"
+              >
+                <div className="mb-6 flex items-center justify-between">
+                  <h2 className="flex items-center gap-2 text-2xl font-semibold text-white">
+                    <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                    Peer {index + 1}
+                  </h2>
+                  {peers.length > 1 && (
+                    <button
+                      onClick={() => removePeer(peer.id)}
+                      className="rounded-lg p-2 text-red-400 transition-all duration-200 hover:bg-red-500/20 hover:text-red-300"
+                      title="Remove this peer"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                </div>
 
-                <KeyField
-                  label="Pre-Shared Key (Optional)"
-                  value={peer.presharedKey}
-                  onChange={(val) => updatePeer(peer.id, { presharedKey: val })}
-                  onGenerate={() => handleGeneratePresharedKeyForPeer(peer.id)}
-                  generateButtonText="Generate PSK"
-                  placeholder="Leave empty for no pre-shared key"
-                  isSensitive
-                  defaultHidden={true}
-                  validator={(value) => validateOptionalWireGuardKey(value, 'Pre-Shared Key')}
-                />
+                <div className="space-y-1">
+                  {/* Public Key */}
+                  <KeyField
+                    label="Peer Public Key"
+                    value={peer.publicKey}
+                    onChange={(val) => updatePeer(peer.id, { publicKey: val })}
+                    showGenerateButton={false}
+                    placeholder="Server's public key"
+                    validator={(value) => validateWireGuardKey(value, 'Peer Public Key')}
+                    error={peerError.publicKey}
+                    onBlur={() => markTouched(`peer-${peer.id}-pub`)}
+                  />
 
-                <div className="mt-6 space-y-4">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-zinc-300">Endpoint</label>
-                    <ValidatedInput
-                      value={peer.endpoint}
-                      validator={validateEndpoint}
-                      placeholder="vpn.example.com:51820"
-                      onChange={(e) => updatePeer(peer.id, { endpoint: e.target.value })}
-                    />
-                  </div>
+                  <KeyField
+                    label="Pre-Shared Key (Optional)"
+                    value={peer.presharedKey}
+                    onChange={(val) => updatePeer(peer.id, { presharedKey: val })}
+                    onGenerate={() => handleGeneratePresharedKeyForPeer(peer.id)}
+                    generateButtonText="Generate PSK"
+                    placeholder="Leave empty for no pre-shared key"
+                    isSensitive
+                    defaultHidden={true}
+                    // validator={(value) => validateOptionalWireGuardKey(value, 'Pre-Shared Key')}
+                    validator={(value) => validateWireGuardKey(value, 'Pre-Shared Key')}
+                    error={peerError.presharedKey}
+                    onBlur={() => markTouched(`peer-${peer.id}-psk`)}
+                  />
 
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-zinc-300">
-                      Allowed IPs
-                    </label>
-                    <ValidatedInput
-                      value={peer.allowedIPs}
-                      validator={validateAllowedIPs}
-                      placeholder="0.0.0.0/0"
-                      onChange={(e) => updatePeer(peer.id, { allowedIPs: e.target.value })}
-                    />
-                  </div>
+                  <div className="mt-6 space-y-4">
+                    <div>
+                      {/* Endpoint */}
+                      <label className="mb-2 block text-sm font-medium text-zinc-300">
+                        Endpoint
+                      </label>
+                      <input
+                        type="text"
+                        value={peer.endpoint}
+                        onChange={(e) => updatePeer(peer.id, { endpoint: e.target.value })}
+                        onBlur={() => markTouched(`peer-${peer.id}-endpoint`)}
+                        placeholder="vpn.example.com:51820"
+                        className={inputClass(!!peerError.endpoint)}
+                      />
+                      {peerError.endpoint && (
+                        <p className="mt-1 text-sm text-red-400">{peerError.endpoint}</p>
+                      )}
+                    </div>
 
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-zinc-300">
-                      Persistent Keepalive
-                    </label>
-                    <input
-                      type="number"
-                      value={peer.persistentKeepalive}
-                      onChange={(e) => updatePeer(peer.id, { persistentKeepalive: e.target.value })}
-                      placeholder="25"
-                      className="w-full rounded-xl border border-zinc-600 bg-zinc-950 px-4 py-3 text-[14px] text-white transition-all outline-none placeholder:text-zinc-500 focus:border-blue-500"
-                    />
+                    {/* Allowed IPs */}
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-zinc-300">
+                        Allowed IPs
+                      </label>
+                      <input
+                        type="text"
+                        value={peer.allowedIPs}
+                        onChange={(e) => updatePeer(peer.id, { allowedIPs: e.target.value })}
+                        onBlur={() => markTouched(`peer-${peer.id}-allowed`)}
+                        placeholder="0.0.0.0/0"
+                        className={inputClass(!!peerError.allowedIPs)}
+                      />
+                      {peerError.allowedIPs && (
+                        <p className="mt-1 text-sm text-red-400">{peerError.allowedIPs}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-zinc-300">
+                        Persistent Keepalive
+                      </label>
+                      <input
+                        type="number"
+                        value={peer.persistentKeepalive}
+                        onChange={(e) =>
+                          updatePeer(peer.id, { persistentKeepalive: e.target.value })
+                        }
+                        placeholder="25"
+                        className="w-full rounded-xl border border-zinc-600 bg-zinc-950 px-4 py-3 text-[14px] text-white transition-all outline-none placeholder:text-zinc-500 focus:border-blue-500"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Add Peer Button */}
           <button onClick={addPeer} className={addPeerButton}>
@@ -481,7 +498,6 @@ export function ConfigBuilder() {
               </label>
               <button
                 onClick={handleDownloadConfig}
-                // disabled={!fullConfig.trim()}
                 disabled={!isConfigFullyValid}
                 className={downloadConfigButton}
               >
@@ -492,9 +508,21 @@ export function ConfigBuilder() {
           </div>
         </div>
 
-        {/* Right Column */}
-        <div>
-          <QRDisplay config={fullConfig} />
+        {/* RIGHT COLUMN - QR DISPLAY */}
+        <div className="flex flex-col">
+          {isConfigFullyValid && fullConfig ? (
+            <QRDisplay config={fullConfig} />
+          ) : (
+            <div className="card flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-700 bg-zinc-900 p-8 text-center">
+              <div className="mb-6 text-6xl opacity-30">📱</div>
+              <h3 className="mb-2 text-lg font-semibold text-zinc-400">QR Code</h3>
+              <p className="max-w-xs text-sm text-zinc-500">
+                Fill all required fields with valid information.
+                <br />
+                QR code will appear here automatically.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
