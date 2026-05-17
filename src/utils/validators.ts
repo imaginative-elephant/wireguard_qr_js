@@ -1,5 +1,3 @@
-// src/utils/validators.ts
-
 export interface ValidationResult {
   isValid: boolean;
   error?: string;
@@ -7,7 +5,7 @@ export interface ValidationResult {
 
 /** WireGuard private/public key validation */
 export function validateWireGuardKey(key: string, fieldName = 'Key'): ValidationResult {
-  const trimmed = key?.trim();
+  const trimmed = String(key ?? '').trim();
   if (!trimmed) {
     return { isValid: true };
   }
@@ -35,7 +33,7 @@ export function validateWireGuardKey(key: string, fieldName = 'Key'): Validation
 
 /** Endpoint validation (hostname:port or IP:port) */
 export function validateEndpoint(endpoint: string): ValidationResult {
-  const trimmed = endpoint?.trim();
+  const trimmed = String(endpoint ?? '').trim();
   if (!trimmed) return { isValid: true };
 
   // Support both IPv4 and IPv6 with port
@@ -70,7 +68,7 @@ export function validateAddress(address: string): ValidationResult {
 
 /** AllowedIPs validation */
 export function validateAllowedIPs(ips: string): ValidationResult {
-  const trimmed = ips?.trim();
+  const trimmed = String(ips ?? '').trim();
   if (!trimmed) return { isValid: true };
 
   const parts = trimmed
@@ -111,7 +109,7 @@ export function validateAllowedIPs(ips: string): ValidationResult {
 
 /** DNS validation (comma-separated IPs) */
 export function validateDNS(dns: string): ValidationResult {
-  const trimmed = dns?.trim();
+  const trimmed = String(dns ?? '').trim();
   if (!trimmed) return { isValid: true };
 
   const parts = dns
@@ -137,6 +135,59 @@ export function validateDNS(dns: string): ValidationResult {
         return { isValid: false, error: `Invalid IPv4 address: ${part}` };
       }
     }
+  }
+
+  return { isValid: true };
+}
+
+/** Port validation (used in Endpoint and ListenPort) */
+export function validatePort(port: string | number): ValidationResult {
+  const trimmed = String(port ?? '').trim();
+  if (!trimmed) return { isValid: true };
+
+  const num = Number(trimmed);
+  if (isNaN(num) || !Number.isInteger(num) || num < 1 || num > 65535) {
+    return {
+      isValid: false,
+      error: 'Port must be a number between 1 and 65535',
+    };
+  }
+
+  return { isValid: true };
+}
+
+/** PersistentKeepalive validation */
+export function validatePersistentKeepalive(value: string | number): ValidationResult {
+  const trimmed = String(value ?? '').trim();
+  if (!trimmed) return { isValid: true };
+
+  const num = Number(trimmed);
+  if (isNaN(num) || num < 0 || num > 65535) {
+    return {
+      isValid: false,
+      error: 'PersistentKeepalive must be between 0 and 65535 seconds',
+    };
+  }
+
+  return { isValid: true };
+}
+
+/** MTU validation */
+export function validateMTU(value: string | number): ValidationResult {
+  const trimmed = String(value ?? '').trim();
+  if (!trimmed) return { isValid: true };
+
+  const num = Number(trimmed);
+  if (isNaN(num) || !Number.isInteger(num)) {
+    return { isValid: false, error: 'MTU must be a valid integer' };
+  }
+
+  if (num < 1280) {
+    return { isValid: false, error: 'MTU must be at least 1280' };
+  }
+
+  if (num > 1500) {
+    return { isValid: false, error: 'MTU should not exceed 1500' };
   }
 
   return { isValid: true };
