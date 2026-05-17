@@ -7,6 +7,7 @@ import { validateWireGuardKey } from '../utils/validators';
 import { downloadWireGuardConfig } from '../utils/download';
 import { parseWireGuardConfig, generateWireGuardConfig } from '../utils/configParser';
 import { useValidation } from '../hooks/useValidation';
+import { ValidatedInput } from './ValidatedInput';
 import toast from 'react-hot-toast';
 import type { Peer } from '../types/wireguard';
 
@@ -15,40 +16,9 @@ const DEFAULT_PEER: Peer = {
   publicKey: '',
   endpoint: '',
   allowedIPs: '',
-  persistentKeepalive: '25',
+  persistentKeepalive: '',
   presharedKey: '',
 };
-
-const inputClass = (hasError: boolean) =>
-  `w-full bg-zinc-950 border rounded-xl px-4 py-3 text-[14px] text-white placeholder:text-zinc-500 transition-all outline-none ${
-    hasError ? 'border-red-600 focus:border-red-500' : 'border-zinc-600 focus:border-blue-500'
-  }`;
-
-// const ValidatedInput = ({
-//   value,
-//   validator,
-//   placeholder,
-//   onChange,
-// }: {
-//   value: string;
-//   validator: (val: string) => { isValid: boolean; error?: string };
-//   placeholder: string;
-//   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-// }) => {
-//   const validation = validator(value);
-//   return (
-//     <>
-//       <input
-//         type="text"
-//         value={value}
-//         onChange={onChange}
-//         placeholder={placeholder}
-//         className={inputClass(!validation.isValid)}
-//       />
-//       {!validation.isValid && <p className="mt-1 text-sm text-red-400">{validation.error}</p>}
-//     </>
-//   );
-// };
 
 export function ConfigBuilder() {
   // Interface
@@ -56,6 +26,7 @@ export function ConfigBuilder() {
   const [interfacePublicKey, setInterfacePublicKey] = useState('');
   const [address, setAddress] = useState('');
   const [dns, setDns] = useState('');
+  const [listenPort, setListenPort] = useState('');
   const [mtu, setMtu] = useState('');
 
   // Peers
@@ -80,6 +51,7 @@ export function ConfigBuilder() {
         privateKey: interfacePrivateKey.trim(),
         address: address.trim(),
         dns: dns.trim() || undefined,
+        listenPort: listenPort ? parseInt(listenPort) : undefined,
         mtu: mtu ? parseInt(mtu) : undefined,
       },
       peers: peers
@@ -94,7 +66,7 @@ export function ConfigBuilder() {
     });
 
     return config;
-  }, [interfacePrivateKey, address, dns, mtu, peers]);
+  }, [interfacePrivateKey, address, dns, listenPort, mtu, peers]);
 
   // Action Buttons
   const buttonBase =
@@ -204,7 +176,7 @@ export function ConfigBuilder() {
         publicKey: '',
         endpoint: 'vpn.example.com:51820',
         allowedIPs: '0.0.0.0/0',
-        persistentKeepalive: '25',
+        persistentKeepalive: '',
         presharedKey: '',
       },
     ]);
@@ -245,7 +217,7 @@ export function ConfigBuilder() {
             publicKey: peer.publicKey || '',
             endpoint: peer.endpoint || '',
             allowedIPs: peer.allowedIps || '',
-            persistentKeepalive: peer.persistentKeepalive?.toString() || '25',
+            persistentKeepalive: peer.persistentKeepalive?.toString() || '',
             presharedKey: peer.presharedKey || '',
           }));
           setPeers(loadedPeers);
@@ -312,44 +284,64 @@ export function ConfigBuilder() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-zinc-300">Address</label>
-                  <input
-                    type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="10.0.0.2/32"
-                    className={inputClass(!!errors.address)}
-                    onBlur={() => markTouched('address')}
-                  />
-                  {errors.address && <p className="mt-1 text-sm text-red-400">{errors.address}</p>}
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-zinc-300">DNS</label>
-                  <input
-                    type="text"
+              {/* Address + DNS (Left - More Space) + Listen Port + MTU (Right - Less Space) */}
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-7">
+                {/* Address + DNS - Takes more space */}
+                <div className="space-y-4 sm:col-span-5">
+                  <div>
+                    <ValidatedInput
+                      label="Address"
+                      value={address}
+                      onChange={setAddress}
+                      error={errors.address}
+                      fieldName="address"
+                      markTouched={markTouched}
+                      validateOnChange={true}
+                      placeholder="10.0.0.2/32"
+                    />
+                  </div>
+                  <ValidatedInput
+                    label="DNS"
                     value={dns}
-                    onChange={(e) => setDns(e.target.value)}
+                    onChange={setDns}
+                    error={errors.dns}
+                    fieldName="dns"
+                    markTouched={markTouched}
+                    validateOnChange={false}
                     placeholder="1.1.1.1, 9.9.9.9"
-                    className={inputClass(!!errors.dns)}
-                    onBlur={() => markTouched('dns')}
                   />
-                  {errors.dns && <p className="mt-1 text-sm text-red-400">{errors.dns}</p>}
                 </div>
-              </div>
+                {/* Listen Port + MTU - Narrower fields */}
+                <div className="space-y-4 sm:col-span-2">
+                  <div>
+                    <ValidatedInput
+                      label="Listen Port"
+                      value={listenPort}
+                      onChange={setListenPort}
+                      fieldName="listenPort"
+                      markTouched={markTouched}
+                      validateOnChange={false}
+                      placeholder="(random)"
+                      type="number"
+                      min="1024"
+                      max="65535"
+                    />
+                  </div>
 
-              <div className="mt-4">
-                <label className="mb-2 block text-sm font-medium text-zinc-400">
-                  MTU (optional)
-                </label>
-                <input
-                  type="text"
-                  value={mtu}
-                  onChange={(e) => setMtu(e.target.value)}
-                  placeholder="1420"
-                  className="w-full rounded-xl border border-zinc-600 bg-zinc-950 px-4 py-3 text-[14px] text-white transition-all outline-none placeholder:text-zinc-500 focus:border-blue-500"
-                />
+                  <div className="mt-4"></div>
+                  <ValidatedInput
+                    label="MTU"
+                    value={mtu}
+                    onChange={setMtu}
+                    fieldName="mtu"
+                    markTouched={markTouched}
+                    validateOnChange={false}
+                    placeholder="(auto)"
+                    type="number"
+                    min="576"
+                    max="1500"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -393,15 +385,14 @@ export function ConfigBuilder() {
                   />
 
                   <KeyField
-                    label="Pre-Shared Key (Optional)"
+                    label="Pre-Shared Key"
                     value={peer.presharedKey}
                     onChange={(val) => updatePeer(peer.id, { presharedKey: val })}
                     onGenerate={() => handleGeneratePresharedKeyForPeer(peer.id)}
                     generateButtonText="Generate PSK"
-                    placeholder="Leave empty for no pre-shared key"
+                    placeholder="(optional)"
                     isSensitive
                     defaultHidden={true}
-                    // validator={(value) => validateOptionalWireGuardKey(value, 'Pre-Shared Key')}
                     validator={(value) => validateWireGuardKey(value, 'Pre-Shared Key')}
                     error={peerError.presharedKey}
                     onBlur={() => markTouched(`peer-${peer.id}-psk`)}
@@ -410,24 +401,30 @@ export function ConfigBuilder() {
                   <div className="mt-6 space-y-4">
                     <div>
                       {/* Endpoint */}
-                      <label className="mb-2 block text-sm font-medium text-zinc-300">
-                        Endpoint
-                      </label>
-                      <input
-                        type="text"
+                      <ValidatedInput
+                        label="Endpoint (optional)"
                         value={peer.endpoint}
-                        onChange={(e) => updatePeer(peer.id, { endpoint: e.target.value })}
-                        onBlur={() => markTouched(`peer-${peer.id}-endpoint`)}
+                        onChange={(val) => updatePeer(peer.id, { endpoint: val })}
+                        error={peerError.endpoint}
+                        fieldName={`peer-${peer.id}-endpoint`}
+                        markTouched={markTouched}
+                        validateOnChange={false}
                         placeholder="vpn.example.com:51820"
-                        className={inputClass(!!peerError.endpoint)}
                       />
-                      {peerError.endpoint && (
-                        <p className="mt-1 text-sm text-red-400">{peerError.endpoint}</p>
-                      )}
                     </div>
 
                     {/* Allowed IPs */}
-                    <div>
+                    <ValidatedInput
+                      label="Allowed IPs"
+                      value={peer.allowedIPs}
+                      onChange={(val) => updatePeer(peer.id, { allowedIPs: val })}
+                      error={peerError.allowedIPs}
+                      fieldName={`peer-${peer.id}-allowed`}
+                      markTouched={markTouched}
+                      validateOnChange={false}
+                      placeholder="0.0.0.0/0, ::/0"
+                    />
+                    {/* <div>
                       <label className="mb-2 block text-sm font-medium text-zinc-300">
                         Allowed IPs
                       </label>
@@ -442,9 +439,22 @@ export function ConfigBuilder() {
                       {peerError.allowedIPs && (
                         <p className="mt-1 text-sm text-red-400">{peerError.allowedIPs}</p>
                       )}
-                    </div>
+                    </div> */}
+                    {/* Persistent Keepalive */}
+                    <ValidatedInput
+                      label="Persistent Keepalive"
+                      value={peer.persistentKeepalive}
+                      onChange={(val) => updatePeer(peer.id, { persistentKeepalive: val })}
+                      fieldName={`peer-${peer.id}-keepalive`}
+                      markTouched={markTouched}
+                      validateOnChange={false}
+                      placeholder="(not recommended)"
+                      type="number"
+                      min="0"
+                      max="120"
+                    />
 
-                    <div>
+                    {/* <div>
                       <label className="mb-2 block text-sm font-medium text-zinc-300">
                         Persistent Keepalive
                       </label>
@@ -457,7 +467,7 @@ export function ConfigBuilder() {
                         placeholder="25"
                         className="w-full rounded-xl border border-zinc-600 bg-zinc-950 px-4 py-3 text-[14px] text-white transition-all outline-none placeholder:text-zinc-500 focus:border-blue-500"
                       />
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>
@@ -508,6 +518,7 @@ export function ConfigBuilder() {
           </div>
         </div>
 
+        {/* Right Column */}
         {/* RIGHT COLUMN - QR DISPLAY */}
         <div className="flex flex-col">
           {isConfigFullyValid && fullConfig ? (
