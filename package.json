@@ -15,6 +15,12 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
+    "update:safe": "npm update",
+    "update:check": "npm outdated",
+    "update:minor": "npx npm-check-updates --target minor -u && npm install",
+    "update:patch": "npx npm-check-updates --target patch -u && npm install",
+    "audit": "npm audit --audit-level=moderate",
+    "audit:fix": "npm audit fix",
     "type-check": "tsc --noEmit",
     "prepare": "husky"
   },
@@ -30,23 +36,20 @@
     "@tailwindcss/vite": "^4.3.0",
     "autoprefixer": "^10.5.0",
     "clsx": "^2.1.1",
-    "ini": "^6.0.0",
-    "js-base64": "^3.7.8",
+    "ini": "6.0.0",
     "lucide-react": "^1.14.0",
-    "postcss": "^8.5.14",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-hot-toast": "^2.6.0",
-    "tailwind-merge": "^3.6.0",
-    "tailwindcss": "^4.3.0"
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/ini": "^4.1.1",
-    "@types/node": "^24.12.2",
+    "@types/node": "24.12.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
@@ -67,6 +70,8 @@
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.10",
     "vite-plugin-compression": "^0.5.1",
+    "vite-plugin-html": "3.2.2",
+    "vite-plugin-sri": "0.0.2",
     "vitest": "^4.1.5"
   }
 }
