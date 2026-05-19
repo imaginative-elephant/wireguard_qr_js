@@ -38,6 +38,7 @@ export function KeyField({
   const [showKey, setShowKey] = useState(!defaultHidden && !isSensitive);
   const [copied, setCopied] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  const id = `keyfield-${label.toLowerCase().replace(/\s+/g, '-')}`;
 
   //   const isEmpty = !value;
   const validation = validator?.(value);
@@ -71,7 +72,12 @@ export function KeyField({
     <div className="mb-6">
       {/* Header */}
       <div className="mb-2.5 flex items-center justify-between">
-        <label className="text-sm font-semibold tracking-wide text-zinc-200">{label}</label>
+        <label
+          htmlFor={id}
+          className="cursor-pointer text-sm font-semibold tracking-wide text-zinc-200"
+        >
+          {label}
+        </label>
 
         <div className="flex items-center gap-3">
           {isSensitive && (
@@ -101,6 +107,7 @@ export function KeyField({
       {/* Input Container */}
       <div className="relative">
         <input
+          id={id}
           type={isSensitive && !showKey ? 'password' : 'text'}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
@@ -111,6 +118,7 @@ export function KeyField({
           autoComplete="off"
           aria-label={label}
           aria-invalid={hasError}
+          aria-describedby={hasError ? `${id}-error` : undefined}
           className={`w-full rounded-xl border-2 bg-zinc-950 px-4 py-3 pr-12 font-mono text-[14px] text-white transition-all placeholder:text-zinc-500 focus:outline-none ${
             hasError
               ? 'border-red-600 focus:border-red-500'
@@ -152,7 +160,11 @@ export function KeyField({
 
       {/* Error Message */}
       {hasError && (
-        <p className="mt-1.5 flex items-center gap-1 text-sm text-red-400" role="alert">
+        <p
+          id={`${id}-error`}
+          className="mt-1.5 flex items-center gap-1 text-sm text-red-400"
+          role="alert"
+        >
           <AlertCircle size={14} />
           {errorMessage}
         </p>
