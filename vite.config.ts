@@ -2,6 +2,29 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import compression from 'vite-plugin-compression';
+import { VitePWA } from 'vite-plugin-pwa';
+
+/**
+ * Content Security Policy
+ * - Dev Considerations: HMR and Tailwind dev mode
+ */
+const csp = {
+  dev: [
+    "default-src 'self'",
+    // Required (unsafe-inline) for Vite HMR; unsafe-eval for workbox/PWA
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'", // Required for Tailwind JIT
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    "connect-src 'self' ws://localhost:* wss://localhost:*",
+    "base-uri 'self'",
+    "form-action 'self'",
+    // "frame-ancestors 'none'",
+    "manifest-src 'self'",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+  ].join('; '),
+};
 
 export default defineConfig({
   // plugins: [react(), tailwindcss()],
@@ -26,10 +49,76 @@ export default defineConfig({
       },
       deleteOriginFile: false,
     }),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: [
+        'favicon.svg',
+        'icons.svg',
+        'pwa-192x192.png',
+        'pwa-512x512.png',
+        'pwa-512x512-maskable.png',
+        'screenshots/**/*.{jpg,jpeg,png}',
+      ],
+      manifest: {
+        name: 'WireGuard QR Generator',
+        short_name: 'WG QR',
+        description: 'Client-side WireGuard configuration and QR code generator',
+        display: 'standalone',
+        theme_color: '#0ea5e9',
+        background_color: '#0f172a',
+        icons: [
+          {
+            src: '/pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/pwa-512x512-maskable.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+        screenshots: [
+          {
+            src: '/screenshots/Screenshot-wireguard_qr_js_desktop_qr_showing.png',
+            sizes: '1718x2079', // Update with actual size if different
+            type: 'image/png',
+            form_factor: 'wide', // For desktop / richer install UI
+            label: 'WireGuard QR Generator on Desktop',
+          },
+          {
+            src: '/screenshots/Screenshot-wireguard_qr_js_mobile_empty.png',
+            sizes: '428x889', // Update with actual size if different
+            type: 'image/png',
+            form_factor: 'narrow', // For mobile
+            label: 'WireGuard QR Generator on Mobile',
+          },
+        ],
+      },
+
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,json}'],
+        skipWaiting: true,
+        clientsClaim: true,
+        inlineWorkboxRuntime: true,
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module',
+      },
+    }),
   ],
 
   build: {
-    target: 'es2022', // Modern browsers
+    target: 'es2022',
     sourcemap: false, // Set to true only for debugging production
     minify: 'oxc', // default
     cssMinify: true,
@@ -61,19 +150,7 @@ export default defineConfig({
       'X-XSS-Protection': '1; mode=block',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-
-      // Strict CSP
-      'Content-Security-Policy': [
-        "default-src 'self'",
-        "script-src 'self' 'unsafe-inline'", // Vite HMR needs inline in dev
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob:",
-        "font-src 'self'",
-        "connect-src 'self'",
-        "base-uri 'self'",
-        "form-action 'self'",
-        "frame-ancestors 'none'",
-      ].join('; '),
+      'Content-Security-Policy': csp.dev,
     },
   },
 });
