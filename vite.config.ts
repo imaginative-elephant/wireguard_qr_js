@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import compression from 'vite-plugin-compression';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   // plugins: [react(), tailwindcss()],
@@ -25,6 +26,20 @@ export default defineConfig({
         level: 11, // Max compression level for Brotli
       },
       deleteOriginFile: false,
+    }),
+    VitePWA({
+      registerType: 'autoUpdate', // Automatically updates the service worker
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      manifest: {
+        name: 'My Static React PWA',
+        short_name: 'ReactPWA',
+        display: 'standalone', // Provides native app feel
+        // ...icons, theme_color, etc.
+      },
+      workbox: {
+        // Essential for offline capability
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+      },
     }),
   ],
 
@@ -69,10 +84,13 @@ export default defineConfig({
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self'",
-        "connect-src 'self'",
+        "connect-src 'self' ws://localhost:* wss://localhost:*",
         "base-uri 'self'",
         "form-action 'self'",
         "frame-ancestors 'none'",
+        // needed for PWA working locally
+        "manifest-src 'self'",
+        "worker-src 'self'",
       ].join('; '),
     },
   },
