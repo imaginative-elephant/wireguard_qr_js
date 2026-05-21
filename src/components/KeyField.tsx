@@ -18,6 +18,7 @@ interface KeyFieldProps {
   error?: string;
   validator?: (value: string) => ValidationResult;
   onBlur?: () => void;
+  clearClipboardAfterCopy: boolean;
 }
 
 export function KeyField({
@@ -34,6 +35,7 @@ export function KeyField({
   error = '',
   validator,
   onBlur,
+  clearClipboardAfterCopy,
 }: KeyFieldProps) {
   const [showKey, setShowKey] = useState(!defaultHidden && !isSensitive);
   const [copied, setCopied] = useState(false);
@@ -49,9 +51,13 @@ export function KeyField({
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
-      toast.success(`${label} copied! (will clear in 15s)`);
+      if (isSensitive && clearClipboardAfterCopy) {
+        toast.success(`${label} copied! (will clear in 15s)`);
+      } else {
+        toast.success(`${label} copied!`);
+      }
 
-      if (isSensitive) {
+      if (isSensitive && clearClipboardAfterCopy) {
         setTimeout(async () => {
           await navigator.clipboard.writeText('');
           toast('Clipboard cleared for security', { icon: '🛡️' });

@@ -20,7 +20,11 @@ const DEFAULT_PEER: Peer = {
   presharedKey: '',
 };
 
-export function ConfigBuilder() {
+interface ConfigBuilderProps {
+  clearClipboardAfterCopy: boolean;
+}
+
+export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
   // Interface
   const [interfacePrivateKey, setInterfacePrivateKey] = useState('');
   const [interfacePublicKey, setInterfacePublicKey] = useState('');
@@ -263,6 +267,7 @@ export function ConfigBuilder() {
                 validator={(value) => validateWireGuardKey(value, 'Private Key')}
                 error={errors.interfacePrivateKey}
                 onBlur={() => markTouched('interfacePrivateKey')}
+                clearClipboardAfterCopy={clearClipboardAfterCopy}
               />
 
               <KeyField
@@ -271,6 +276,7 @@ export function ConfigBuilder() {
                 onChange={setInterfacePublicKey}
                 readonly
                 showGenerateButton={false}
+                clearClipboardAfterCopy={clearClipboardAfterCopy}
               />
 
               <div className="mb-6 flex justify-center">
@@ -382,6 +388,7 @@ export function ConfigBuilder() {
                     validator={(value) => validateWireGuardKey(value, 'Peer Public Key')}
                     error={peerError.publicKey}
                     onBlur={() => markTouched(`peer-${peer.id}-pub`)}
+                    clearClipboardAfterCopy={clearClipboardAfterCopy}
                   />
 
                   <KeyField
@@ -396,6 +403,7 @@ export function ConfigBuilder() {
                     validator={(value) => validateWireGuardKey(value, 'Pre-Shared Key')}
                     error={peerError.presharedKey}
                     onBlur={() => markTouched(`peer-${peer.id}-psk`)}
+                    clearClipboardAfterCopy={clearClipboardAfterCopy}
                   />
 
                   <div className="mt-6 space-y-4">
