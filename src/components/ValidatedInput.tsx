@@ -5,37 +5,29 @@ const inputBaseClass = `w-full bg-zinc-950 border rounded-xl px-4 py-3 text-[14p
 
 interface ValidatedInputProps extends Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
-  'onChange'
+  'onChange' | 'value'
 > {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
+  onFocus?: () => void;
   error?: string;
-  fieldName: string;
-  markTouched: (field: string) => void;
-  validateOnChange?: boolean;
 }
 
 export const ValidatedInput: React.FC<ValidatedInputProps> = ({
   label,
   value,
   onChange,
+  onBlur,
+  onFocus,
   error,
-  fieldName,
-  markTouched,
-  validateOnChange = true,
   ...props
 }) => {
   const id = `validatedinput-${label?.toLowerCase().replace(/\s+/g, '-')}`;
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
-    if (validateOnChange) {
-      markTouched(fieldName);
-    }
-  };
-
-  const handleBlur = () => {
-    markTouched(fieldName);
   };
 
   return (
@@ -51,9 +43,10 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
         type="text"
         value={value}
         onChange={handleChange}
-        onBlur={handleBlur}
+        onBlur={onBlur}
+        onFocus={onFocus}
         aria-label={label}
-        aria-invalid={error ? 'true' : 'false'}
+        aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
         className={`${inputBaseClass} ${
           error ? 'border-red-600 focus:border-red-500' : 'border-zinc-600 focus:border-blue-500'
