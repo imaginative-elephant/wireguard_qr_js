@@ -1,7 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { Plus, Trash2, RotateCcw, FileText, Upload, Download, Key } from 'lucide-react';
 import { KeyField } from './KeyField';
-import { QRDisplay } from './QRDisplay';
 import { generateKeyPair, derivePubKey, generatePresharedKey } from '../utils/crypto';
 import { downloadWireGuardConfig } from '../utils/download';
 import { parseWireGuardConfig, generateWireGuardConfig } from '../utils/configParser';
@@ -21,6 +20,13 @@ const DEFAULT_PEER: Peer = {
   persistentKeepalive: '',
   presharedKey: '',
 };
+
+// Dynamic import with named export
+const QRDisplay = lazy(() =>
+  import('./QRDisplay').then((module) => ({
+    default: module.QRDisplay,
+  }))
+);
 
 interface ConfigBuilderProps {
   clearClipboardAfterCopy: boolean;
@@ -573,22 +579,31 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
           </div>
         </div>
 
-        {/* Right Column */}
-        {/* QR DISPLAY */}
+        {/* Right Column - QR Code */}
         <div className="flex flex-col">
-          {isConfigFullyValid && fullConfig ? (
-            <QRDisplay config={fullConfig} />
-          ) : (
-            <div className="card flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-700 bg-zinc-900 p-8 text-center">
-              <div className="mb-6 text-6xl opacity-30">📱</div>
-              <h3 className="mb-2 text-lg font-semibold text-zinc-400">QR Code</h3>
-              <p className="max-w-xs text-sm text-zinc-500">
-                Fill all required fields with valid information.
-                <br />
-                QR code will appear here automatically.
-              </p>
-            </div>
-          )}
+          <Suspense
+            fallback={
+              <div className="card flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-700 bg-zinc-900 p-8 text-center">
+                <div className="mb-6 text-6xl opacity-30">📱</div>
+                <h3 className="mb-2 text-lg font-semibold text-zinc-400">QR Code</h3>
+                <p className="max-w-xs text-sm text-zinc-500">Loading QR Code generator...</p>
+              </div>
+            }
+          >
+            {isConfigFullyValid && fullConfig ? (
+              <QRDisplay config={fullConfig} />
+            ) : (
+              <div className="card flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-700 bg-zinc-900 p-8 text-center">
+                <div className="mb-6 text-6xl opacity-30">📱</div>
+                <h3 className="mb-2 text-lg font-semibold text-zinc-400">QR Code</h3>
+                <p className="max-w-xs text-sm text-zinc-500">
+                  Fill all required fields with valid information.
+                  <br />
+                  QR code will appear here automatically.
+                </p>
+              </div>
+            )}
+          </Suspense>
         </div>
       </div>
     </div>
