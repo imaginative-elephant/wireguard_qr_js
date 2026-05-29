@@ -1,4 +1,4 @@
-import { useState, useMemo, lazy, Suspense } from 'react';
+import { useState, useMemo, lazy, Suspense, useEffect, useRef } from 'react';
 import { Plus, Trash2, RotateCcw, FileText, Upload, Download, Key } from 'lucide-react';
 import { KeyField } from './KeyField';
 import { generateKeyPair, derivePubKey, generatePresharedKey } from '../utils/crypto';
@@ -7,6 +7,7 @@ import { parseWireGuardConfig, generateWireGuardConfig } from '../utils/configPa
 import { ValidatedInput } from './ValidatedInput';
 import toast from 'react-hot-toast';
 import type { Peer } from '../types/wireguard';
+import { Card } from './Card';
 
 import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,9 +24,7 @@ const DEFAULT_PEER: Peer = {
 
 // Dynamic import with named export
 const QRDisplay = lazy(() =>
-  import('./QRDisplay').then((module) => ({
-    default: module.QRDisplay,
-  }))
+  import('./QRDisplay').then((module) => ({ default: module.QRDisplay }))
 );
 
 interface ConfigBuilderProps {
@@ -71,6 +70,23 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
   const mtu = values.mtu ?? '';
   const peers = useMemo(() => (values.peers as Peer[]) ?? [], [values.peers]);
 
+  const latestPeerRef = useRef<HTMLDivElement>(null);
+  const prevPeerCountRef = useRef(fields.length); // Track previous count
+
+  // Auto-focus first input of newly added peer
+  useEffect(() => {
+    if (fields.length > prevPeerCountRef.current) {
+      // New peer was added
+      setTimeout(() => {
+        if (latestPeerRef.current) {
+          const firstInput = latestPeerRef.current.querySelector('input');
+          firstInput?.focus();
+        }
+      }, 80);
+    }
+    prevPeerCountRef.current = fields.length;
+  }, [fields.length]);
+
   const isConfigFullyValid = useMemo(() => {
     return (
       formIsValid &&
@@ -104,36 +120,41 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
   }, [isConfigFullyValid, interfacePrivateKey, address, dns, listenPort, mtu, peers]);
 
   // ====================== Button Styles ======================
+  // base styles for all buttons
   const buttonBase =
-    'flex items-center justify-center gap-2 border ' +
-    'active:scale-[0.985] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 '; // needs a trailing space
-  const actionButton = buttonBase + 'rounded-xl px-6 py-3 font-medium ';
+    'active:scale-[0.985] transition-all duration-200 ' +
+    //accessibility focus styles
+    'focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950';
 
-  const clearAllButton =
-    actionButton +
-    'border-red-ochre-600/30 bg-gradient-to-r from-red-ochre-800/70 to-red-ochre-700/70 text-red-ochre-100 shadow-lg shadow-red-ochre-900/20 hover:from-red-ochre-700/80 hover:to-red-ochre-600/80 focus-visible:ring-offset-zinc-950 focus-visible:ring-red-ochre-500/40';
+  // Common base for most buttons (flex layout + shape + typography + accessibility)
+  const commonButton = `${buttonBase} flex items-center gap-2 font-medium rounded-2xl border focus-visible:ring-blue-400`;
 
-  const loadExampleButton =
-    actionButton +
-    'border-blue-slate-600/30 bg-gradient-to-r from-blue-slate-800/70 to-blue-slate-500/70 text-blue-slate-100 shadow-lg shadow-blue-slate-900/20 hover:from-blue-slate-700/80 hover:to-blue-slate-600/80 focus-visible:ring-offset-zinc-950 focus-visible:ring-pale-blue-500/40';
+  // Small colored buttons base
+  const smallButton = `${commonButton} bg-zinc-800 text-sm px-4 py-2.5 md:px-5 shadow-sm`;
 
-  const uploadConfigButton =
-    actionButton +
-    'col-span-full cursor-pointer rounded-xl border-amethyst-smoke-500/30 bg-gradient-to-r from-amethyst-smoke-700/70 to-amethyst-smoke-600/70 text-amethyst-smoke-100 shadow-lg shadow-amethyst-smoke-800/20 hover:from-amethyst-smoke-600/80 hover:to-amethyst-smoke-500/80 focus-visible:ring-offset-zinc-950 focus-visible:ring-amethyst-smoke-400/40';
-  //'cursor-pointer border-amethyst-smoke-500/30 bg-gradient-to-r from-amethyst-smoke-700/70 to-amethyst-smoke-600/70 text-amethyst-smoke-100 shadow-lg shadow-amethyst-smoke-800/20 hover:from-amethyst-smoke-600/80 hover:to-amethyst-smoke-500/80 focus-visible:ring-offset-zinc-950 focus-visible:ring-amethyst-smoke-400/40';
+  // === Main Small Buttons ===
+  const clearAllButton = `${smallButton} border-red-ochre-400/85 text-red-ochre-300 hover:bg-red-ochre-950 hover:text-red-ochre-100 hover:border-red-ochre-400`;
 
-  const downloadConfigButton =
-    actionButton +
-    'col-span-full border-emerald-500/30 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-500 hover:to-emerald-600 focus-visible:ring-offset-zinc-950 focus-visible:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-60';
-  //'border-emerald-500/30 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-500 hover:to-emerald-600 focus-visible:ring-offset-zinc-950 focus-visible:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-60';
+  const loadExampleButton = `${smallButton} border-blue-slate-400/85 text-blue-slate-300 hover:bg-blue-slate-950 hover:text-blue-slate-100 hover:border-blue-slate-400`;
 
-  const addPeerButton =
-    buttonBase +
-    'w-full rounded-2xl border-emerald-600/30 bg-gradient-to-r from-emerald-700/80 to-emerald-600/80 py-4 font-semibold text-emerald-100 shadow-lg shadow-emerald-900/20 hover:from-emerald-600/90 hover:to-emerald-500/90 hover:border-emerald-500 focus-visible:ring-offset-zinc-950 focus-visible:ring-emerald-400';
+  const uploadConfigButton = `${smallButton} border-amethyst-smoke-500/85 text-amethyst-smoke-300 hover:bg-amethyst-smoke-950 hover:text-amethyst-smoke-100 hover:border-amethyst-smoke-400 cursor-pointer`;
 
-  const derivePublicKeyButton =
-    buttonBase +
-    'rounded-xl border-zinc-400/50 bg-gradient-to-r from-zinc-900/50 to-zinc-800/50 px-6 py-2 text-sm font-medium text-zinc-400 hover:border-zinc-500 hover:from-zinc-800/70 hover:to-zinc-700/70 hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-offset-zinc-950 focus-visible:ring-zinc-400';
+  // === Derive Public Key Button ===
+  const derivePublicKeyButton = `${commonButton} border-zinc-700 bg-zinc-900/80 px-6 py-3 text-sm text-zinc-400 
+  hover:border-zinc-500 hover:bg-zinc-800 hover:text-white 
+  disabled:cursor-not-allowed disabled:opacity-50 
+  focus-visible:ring-blue-400`;
+
+  // === Large / Special Buttons ===
+  const largeButtonBase = `${buttonBase} w-full rounded-3xl font-semibold text-white focus-visible:ring-blue-400`;
+
+  const addPeerButton = `${largeButtonBase} hidden md:block border border-emerald-500/30 bg-gradient-to-r from-emerald-600 to-emerald-700 py-5 text-lg shadow-lg shadow-emerald-600/30 hover:from-emerald-500 hover:to-emerald-600 hover:shadow-xl`;
+
+  const downloadButton = `${largeButtonBase} flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 py-6 text-xl shadow-xl shadow-emerald-500/40 hover:brightness-110 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60`;
+
+  // === Mobile Floating Action Button (Standalone) ===
+  const addPeerButtonMobile =
+    'fixed bottom-6 right-6 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-2xl shadow-emerald-600/50 transition-all duration-200 hover:bg-emerald-500 active:scale-95 md:hidden';
 
   // ====================== Handlers ======================
 
@@ -183,10 +204,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
   };
 
   const removePeer = (index: number) => {
-    if (fields.length === 1) {
-      toast.error('Must have at least one peer');
-      return;
-    }
+    if (fields.length === 1) return toast.error('Must have at least one peer');
     remove(index);
     toast.success('Peer removed');
   };
@@ -279,11 +297,8 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
         setInterfacePublicKey('');
         toast.success('Config loaded successfully');
       } catch (error) {
-        console.error(error);
         toast.error(
-          error instanceof Error
-            ? `Failed to parse config: ${error.message}`
-            : 'Failed to parse config file'
+          error instanceof Error ? `Failed to parse: ${error.message}` : 'Failed to parse config'
         );
       }
     };
@@ -292,17 +307,74 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
-        <div className="space-y-8">
-          {/* Interface Card */}
-          <div className="card rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
-            <h2 className="mb-6 flex items-center gap-2 text-2xl font-semibold text-white">
-              <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-              Interface Configuration
-            </h2>
+    <div className="mx-auto max-w-7xl px-4 py-6 md:py-10">
+      {/* Top Action Bar */}
+      <div className="sticky top-3 z-50 mb-8 flex items-center justify-between rounded-3xl border border-white/5 bg-zinc-950/40 px-5 py-4 shadow-2xl shadow-black/60 backdrop-blur-2xl md:mb-12 md:px-6">
+        <div className="text-xl font-semibold tracking-tight text-white">
+          {/* Desktop Top Action Bar Text */}
+          {/* <span className="hidden md:inline">Configuration</span> */}
+          {/* Mobile Top Action Bar Text*/}
+          {/* <span className="md:hidden">Config</span> */}
+        </div>
 
-            <div className="space-y-6">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <button
+            onClick={clearAll}
+            className={clearAllButton}
+            title="Clear all fields and start over"
+            aria-label="Clear all fields"
+          >
+            <RotateCcw size={18} aria-hidden="true" />
+            <span className="hidden sm:inline">Clear All</span>
+          </button>
+
+          <button
+            onClick={loadExample}
+            className={loadExampleButton}
+            title="Load a sample WireGuard configuration"
+            aria-label="Load a sample WireGuard configuration"
+          >
+            <FileText size={18} aria-hidden="true" />
+            <span className="hidden sm:inline">Load Example</span>
+          </button>
+
+          <label
+            htmlFor="upload-file"
+            className={uploadConfigButton}
+            role="button"
+            tabIndex={0}
+            aria-label="Upload an existing .conf file"
+            title="Upload an existing .conf file"
+          >
+            <input
+              id="upload-file"
+              type="file"
+              accept=".conf"
+              onChange={handleUploadConfig}
+              className="hidden"
+              aria-hidden="false"
+            />
+            <Upload size={18} aria-hidden="true" />
+            <span className="hidden sm:inline">Upload .conf</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
+        {/* Left Column - Configuration */}
+        <div className="space-y-8 md:space-y-10 lg:col-span-7">
+          {/* Interface Card */}
+          <Card>
+            <div className="mb-8 flex items-center gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/10 ring-1 ring-blue-500/20">
+                <div className="h-3 w-3 rounded-full bg-blue-500" />
+              </div>
+              <h2 className="text-2xl font-semibold tracking-tight text-white md:text-3xl">
+                Interface
+              </h2>
+            </div>
+
+            <div className="space-y-8">
               <KeyField
                 label="Private Key"
                 value={interfacePrivateKey}
@@ -333,14 +405,16 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
                   onClick={handleDeriveInterfacePubKey}
                   disabled={!interfacePrivateKey}
                   className={derivePublicKeyButton}
+                  title="Derive public key from private key"
+                  aria-label="Derive public key from private key"
                 >
-                  <Key size={14} className="mr-2" />
+                  <Key size={18} aria-hidden="true" />
                   Derive Public Key from Private
                 </button>
               </div>
 
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-7">
-                <div className="space-y-4 sm:col-span-5">
+                <div className="space-y-6 sm:col-span-5">
                   <Controller
                     control={control}
                     name="address"
@@ -362,7 +436,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
                     name="dns"
                     render={({ field }) => (
                       <ValidatedInput
-                        label="DNS"
+                        label="DNS Servers"
                         value={field.value || ''}
                         onChange={field.onChange}
                         onBlur={() => trigger('dns')}
@@ -374,7 +448,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
                   />
                 </div>
 
-                <div className="space-y-4 sm:col-span-2">
+                <div className="space-y-6 sm:col-span-2">
                   <Controller
                     control={control}
                     name="listenPort"
@@ -411,7 +485,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Peers Section */}
           <div className="space-y-8">
@@ -419,26 +493,30 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
               // const peer = peers[index] || DEFAULT_PEER;
 
               return (
-                <div
-                  key={field.id}
-                  className="card rounded-3xl border border-zinc-800 bg-zinc-900 p-8"
-                >
-                  <div className="mb-6 flex items-center justify-between">
-                    <h2 className="flex items-center gap-2 text-2xl font-semibold text-white">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                      Peer {index + 1}
-                    </h2>
+                <Card key={field.id} ref={index === fields.length - 1 ? latestPeerRef : null}>
+                  <div className="mb-8 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-500/20 md:h-10 md:w-10">
+                        <div className="h-3 w-3 rounded-full bg-emerald-500" />
+                      </div>
+                      <h2 className="text-2xl font-semibold tracking-tighter text-white md:text-3xl">
+                        Peer {index + 1}
+                      </h2>
+                    </div>
+
                     {fields.length > 1 && (
                       <button
                         onClick={() => removePeer(index)}
-                        className="rounded-lg p-2 text-red-400 transition-all duration-200 hover:bg-red-500/20 hover:text-red-300"
+                        className="rounded-2xl p-3 text-red-400 transition-all hover:bg-red-500/10 hover:text-red-300 active:scale-95"
+                        title="Remove peer"
+                        aria-label="Remove peer"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={22} aria-hidden="true" />
                       </button>
                     )}
                   </div>
 
-                  <div className="space-y-6">
+                  <div className="space-y-8">
                     {/* Public Key */}
                     <Controller
                       control={control}
@@ -527,85 +605,65 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
                       )}
                     />
                   </div>
-                </div>
+                </Card>
               );
             })}
 
-            {/* Add Peer Button */}
-            <button onClick={addPeer} className={addPeerButton}>
-              <Plus size={20} />
+            {/* Desktop Add Peer Button */}
+            <button
+              onClick={addPeer}
+              className={addPeerButton}
+              title="Add another peer"
+              aria-label="Add new peer"
+            >
+              <Plus size={24} aria-hidden="true" className="mr-3 inline" />
               Add Another Peer
             </button>
           </div>
+        </div>
 
-          {/* Action Buttons */}
-          <div className="card rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-            <h3 className="mb-4 text-lg font-semibold text-white">Actions</h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button
-                onClick={clearAll}
-                className={clearAllButton}
-                // className="flex items-center justify-center gap-2 rounded-xl border-red-500/30 bg-zinc-800/80 px-6 py-3 font-medium text-red-400 transition-all duration-200 hover:bg-red-950 hover:border-red-500/50 hover:text-red-300 active:bg-red-900"
-              >
-                <RotateCcw size={16} />
-                Clear All
-              </button>
+        {/* Right Column - QR + Download */}
+        <div className="lg:col-span-5">
+          <div className="sticky top-24 space-y-6 lg:top-28">
+            <Suspense
+              fallback={
+                <Card>
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="mx-auto mb-8 text-7xl opacity-20 md:text-8xl">📱</div>
+                    <h3 className="mb-3 text-2xl font-semibold tracking-tight text-zinc-300">
+                      QR Code
+                    </h3>
+                    <p className="text-zinc-500"> QR Code generator is loading... </p>
+                  </div>
+                </Card>
+              }
+            >
+              <QRDisplay config={isConfigFullyValid ? fullConfig : ''} />
+            </Suspense>
 
-              <button onClick={loadExample} className={loadExampleButton}>
-                <FileText size={16} />
-                Load Example
-              </button>
-
-              <label className={uploadConfigButton}>
-                <input
-                  type="file"
-                  accept=".conf"
-                  onChange={handleUploadConfig}
-                  className="hidden"
-                />
-                <Upload size={16} />
-                Upload Config (.conf)
-              </label>
-
-              <button
-                onClick={handleDownloadConfig}
-                disabled={!isConfigFullyValid || !fullConfig}
-                className={downloadConfigButton}
-              >
-                <Download size={16} />
-                Download Config (.conf)
-              </button>
-            </div>
+            <button
+              onClick={handleDownloadConfig}
+              disabled={!isConfigFullyValid || !fullConfig}
+              className={downloadButton}
+              title="Download .conf"
+              aria-label="Download .conf"
+            >
+              <Download size={26} aria-hidden="true" />
+              Download .conf
+            </button>
           </div>
         </div>
-
-        {/* Right Column - QR Code */}
-        <div className="flex flex-col">
-          <Suspense
-            fallback={
-              <div className="card flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-700 bg-zinc-900 p-8 text-center">
-                <div className="mb-6 text-6xl opacity-30">📱</div>
-                <h3 className="mb-2 text-lg font-semibold text-zinc-400">QR Code</h3>
-                <p className="max-w-xs text-sm text-zinc-500">Loading QR Code generator...</p>
-              </div>
-            }
-          >
-            {isConfigFullyValid && fullConfig ? (
-              <QRDisplay config={fullConfig} />
-            ) : (
-              <div className="card flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-700 bg-zinc-900 p-8 text-center">
-                <div className="mb-6 text-6xl opacity-30">📱</div>
-                <h3 className="mb-2 text-lg font-semibold text-zinc-400">QR Code</h3>
-                <p className="max-w-xs text-sm text-zinc-500">
-                  Fill all required fields with valid information.
-                  <br />
-                  QR code will appear here automatically.
-                </p>
-              </div>
-            )}
-          </Suspense>
-        </div>
       </div>
+
+      {/* Mobile Floating Add Peer Button */}
+      <button
+        onClick={addPeer}
+        className={addPeerButtonMobile}
+        aria-label="Add new peer"
+        title="Add another peer"
+      >
+        <Plus size={28} strokeWidth={3} aria-hidden="true" />
+      </button>
     </div>
   );
 }

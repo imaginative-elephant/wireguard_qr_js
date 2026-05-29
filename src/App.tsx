@@ -15,7 +15,7 @@ function App() {
         {/* Gear Icon - Top Right Corner */}
         <button
           onClick={() => setShowClipboardModal(true)}
-          className="absolute top-6 right-6 z-10 rounded-2xl p-3 text-zinc-400 transition-all hover:bg-zinc-800 hover:text-white"
+          className="absolute top-5 right-6 z-10 rounded-2xl p-1 text-zinc-400 transition-all hover:bg-zinc-800 hover:text-white"
           title="Clipboard Settings"
           aria-label="Open clipboard settings"
         >
@@ -23,9 +23,10 @@ function App() {
         </button>
 
         {/* Centered Title */}
-        <div className="flex flex-col items-center pt-6 pb-4">
+        <div className="flex flex-col items-center pt-2 pb-0">
           <h1 className="text-3xl font-bold">🔐 WireGuard QR Code Generator</h1>
-          <p className="mt-1 text-center text-zinc-400">
+          {/* don't show on mobile */}
+          <p className="mt-1 hidden text-center text-zinc-400 sm:block">
             Client-side only • Keys never leave your device
           </p>
         </div>

@@ -42,6 +42,7 @@ export function KeyField({
   const [showTooltip, setShowTooltip] = useState(false);
 
   const id = `keyfield-${label.toLowerCase().replace(/\s+/g, '-')}`;
+  const cleanLabel = label.toLowerCase().replace('(optional)', '').trim();
 
   const copyToClipboard = async () => {
     if (!value) return;
@@ -85,8 +86,10 @@ export function KeyField({
               type="button"
               onClick={() => setShowKey(!showKey)}
               disabled={disabled}
-              className="flex items-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-zinc-200 disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:opacity-50"
+              aria-pressed={showKey ? 'true' : 'false'}
               aria-label={showKey ? `Hide ${label}` : `Show ${label}`}
+              title={showKey ? `Hide ${cleanLabel}` : `Show ${cleanLabel}`}
             >
               {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
               <span>{showKey ? 'Hide' : 'Show'}</span>
@@ -98,7 +101,8 @@ export function KeyField({
               type="button"
               onClick={onGenerate}
               disabled={disabled} // disable the button and the field while generating the key
-              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-semibold shadow-sm transition-all duration-200 hover:bg-emerald-500 active:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 disabled:opacity-60"
+              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-zinc-950 shadow-sm transition-all duration-200 hover:bg-emerald-500 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 disabled:opacity-60"
+              title={`Generate a new secure ${cleanLabel}`}
             >
               <Key size={14} />
               {generateButtonText}
@@ -124,14 +128,14 @@ export function KeyField({
           aria-label={label}
           aria-invalid={hasError}
           aria-describedby={hasError ? `${id}-error` : undefined}
-          className={`w-full rounded-xl border-2 bg-zinc-950 px-4 py-3 pr-12 font-mono text-[14px] text-white transition-all placeholder:text-zinc-500 focus:outline-none ${
+          className={`w-full rounded-2xl border-2 bg-zinc-950 px-5 py-3.5 font-mono text-[15px] text-white transition-all duration-200 placeholder:text-zinc-500 focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-950 focus:outline-none ${
             disabled
               ? 'cursor-not-allowed border-zinc-700 bg-zinc-900 text-zinc-400'
               : hasError
-                ? 'border-red-600 focus:border-red-500'
+                ? 'border-red-600 focus:border-red-500 focus:ring-red-500/30'
                 : isEmpty
-                  ? 'border-zinc-700 focus:border-zinc-500'
-                  : 'border-green-600 focus:border-green-500'
+                  ? 'border-zinc-700 focus:border-blue-400 focus:ring-blue-400/40'
+                  : 'border-emerald-600 focus:border-emerald-500 focus:ring-emerald-500/30'
           }`}
         />
 
@@ -140,21 +144,22 @@ export function KeyField({
           <button
             type="button"
             onClick={copyToClipboard}
-            className="absolute top-1/2 right-3 -translate-y-1/2 p-2 text-zinc-400 transition-colors hover:text-white"
+            className="absolute top-1/2 right-4 -translate-y-1/2 rounded-xl p-2 text-zinc-400 transition-colors outline-none hover:text-white focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:scale-95"
+            title={`Copy ${label}`}
             aria-label={`Copy ${label}`}
           >
-            <Copy size={18} className={copied ? 'text-emerald-500' : ''} />
+            <Copy size={19} className={copied ? 'text-emerald-500' : ''} />
           </button>
         )}
 
         {/* Validation Error Icon + Tooltip */}
         {hasError && !disabled && (
           <div
-            className="absolute inset-y-0 right-12 my-auto flex items-center text-red-500"
+            className="absolute top-1/2 right-14 -translate-y-1/2 text-red-500"
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
           >
-            <AlertCircle size={18} className="cursor-help" aria-label="Invalid input" />
+            <AlertCircle size={20} className="cursor-help" aria-label="Invalid input" />
             {showTooltip && (
               <div className="absolute top-full right-0 z-10 mt-2 rounded-lg border border-zinc-600 bg-zinc-800 px-3 py-2 text-xs whitespace-nowrap text-white">
                 {error}
@@ -172,7 +177,7 @@ export function KeyField({
           className="mt-1.5 flex items-center gap-1 text-sm text-red-400"
           role="alert"
         >
-          <AlertCircle size={14} />
+          <AlertCircle size={15} aria-hidden="true" />
           {error}
         </p>
       )}
