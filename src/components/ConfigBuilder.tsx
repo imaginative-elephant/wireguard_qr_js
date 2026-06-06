@@ -186,17 +186,6 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
     }
   };
 
-  // const updatePeer = (index: number, updates: Partial<Peer>) => {
-  //   const currentPeer = peers[index];
-  //   if (!currentPeer) return;
-
-  //   const newPeer = { ...currentPeer, ...updates } as Peer;
-  //   setValue(`peers.${index}`, newPeer, {
-  //     shouldValidate: true,
-  //     shouldTouch: true,
-  //   });
-  // };
-
   const addPeer = () => {
     const newPeer: Peer = { ...DEFAULT_PEER, id: (fields.length + 1).toString() };
     append(newPeer, { shouldFocus: true });
@@ -374,6 +363,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
               </h2>
             </div>
 
+            {/* Private Key */}
             <div className="space-y-8">
               <KeyField
                 label="Private Key"
@@ -392,6 +382,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
                 clearClipboardAfterCopy={clearClipboardAfterCopy}
               />
 
+              {/* Public Key */}
               <KeyField
                 label="Public Key"
                 value={interfacePublicKey}
@@ -413,8 +404,10 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
                 </button>
               </div>
 
+              {/* Address + DNS (Left - More Space) + Listen Port + MTU (Right - Less Space) */}
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-7">
                 <div className="space-y-6 sm:col-span-5">
+                  {/* Address */}
                   <Controller
                     control={control}
                     name="address"
@@ -431,6 +424,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
                     )}
                   />
 
+                  {/* DNS */}
                   <Controller
                     control={control}
                     name="dns"
@@ -448,6 +442,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
                   />
                 </div>
 
+                {/* Listen Port */}
                 <div className="space-y-6 sm:col-span-2">
                   <Controller
                     control={control}
@@ -466,6 +461,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
                     )}
                   />
 
+                  {/* MTU */}
                   <Controller
                     control={control}
                     name="mtu"
@@ -490,8 +486,6 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
           {/* Peers Section */}
           <div className="space-y-8">
             {fields.map((field, index) => {
-              // const peer = peers[index] || DEFAULT_PEER;
-
               return (
                 <Card key={field.id} ref={index === fields.length - 1 ? latestPeerRef : null}>
                   <div className="mb-8 flex items-center justify-between">
@@ -517,7 +511,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
                   </div>
 
                   <div className="space-y-8">
-                    {/* Public Key */}
+                    {/* Peer Public Key */}
                     <Controller
                       control={control}
                       name={`peers.${index}.publicKey`}
@@ -535,6 +529,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
                       )}
                     />
 
+                    {/* Pre-Shared Key */}
                     <Controller
                       control={control}
                       name={`peers.${index}.presharedKey`}

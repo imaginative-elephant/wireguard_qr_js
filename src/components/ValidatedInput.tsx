@@ -18,58 +18,52 @@ interface ValidatedInputProps extends Omit<
   error?: string;
 }
 
-export const ValidatedInput: React.FC<ValidatedInputProps> = ({
-  label,
-  value,
-  onChange,
-  onBlur,
-  onFocus,
-  error,
-  ...props
-}) => {
-  const id = `validatedinput-${label?.toLowerCase().replace(/\s+/g, '-')}`;
-  const hasError = !!error;
+export const ValidatedInput: React.FC<ValidatedInputProps> = React.memo(
+  ({ label, value, onChange, onBlur, onFocus, error, ...props }) => {
+    const id = `validatedinput-${label?.toLowerCase().replace(/\s+/g, '-')}`;
+    const hasError = !!error;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
-  };
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(e.target.value);
+    };
 
-  return (
-    <div className="space-y-2">
-      {label && (
-        <label htmlFor={id} className="block text-sm font-semibold tracking-wide text-zinc-200">
-          {label}
-        </label>
-      )}
+    return (
+      <div className="space-y-2">
+        {label && (
+          <label htmlFor={id} className="block text-sm font-semibold tracking-wide text-zinc-200">
+            {label}
+          </label>
+        )}
 
-      <input
-        id={id}
-        type="text"
-        value={value}
-        onChange={handleChange}
-        onBlur={onBlur}
-        onFocus={onFocus}
-        aria-label={label}
-        aria-invalid={hasError}
-        aria-describedby={hasError ? `${id}-error` : undefined}
-        className={`${inputBaseClass} ${
-          hasError
-            ? 'border-red-600 focus:border-red-500 focus:ring-red-500/30'
-            : 'border-zinc-700 focus:border-blue-400 focus:ring-blue-400/40'
-        }`}
-        {...props}
-      />
+        <input
+          id={id}
+          type="text"
+          value={value}
+          onChange={handleChange}
+          onBlur={onBlur}
+          onFocus={onFocus}
+          aria-label={label}
+          aria-invalid={hasError}
+          aria-describedby={hasError ? `${id}-error` : undefined}
+          className={`${inputBaseClass} ${
+            hasError
+              ? 'border-red-600 focus:border-red-500 focus:ring-red-500/30'
+              : 'border-zinc-700 focus:border-blue-400 focus:ring-blue-400/40'
+          }`}
+          {...props}
+        />
 
-      {error && (
-        <p
-          id={`${id}-error`}
-          className="flex items-center gap-1.5 text-sm text-red-400"
-          role="alert"
-        >
-          <AlertCircle size={15} className="inline" />
-          {error}
-        </p>
-      )}
-    </div>
-  );
-};
+        {error && (
+          <p
+            id={`${id}-error`}
+            className="flex items-center gap-1.5 text-sm text-red-400"
+            role="alert"
+          >
+            <AlertCircle size={15} className="inline" />
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+);

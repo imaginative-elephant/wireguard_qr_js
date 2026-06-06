@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { Copy, Eye, EyeOff, AlertCircle, Key } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -20,7 +20,7 @@ interface KeyFieldProps {
   clearClipboardAfterCopy: boolean;
 }
 
-export function KeyField({
+export const KeyField = memo(function KeyField({
   label,
   value,
   onChange,
@@ -43,6 +43,15 @@ export function KeyField({
 
   const id = `keyfield-${label.toLowerCase().replace(/\s+/g, '-')}`;
   const cleanLabel = label.toLowerCase().replace('(optional)', '').trim();
+  const hasError = !!error;
+  const isEmpty = !value.trim();
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange?.(e.target.value);
+    },
+    [onChange]
+  );
 
   const copyToClipboard = async () => {
     if (!value) return;
@@ -65,9 +74,6 @@ export function KeyField({
       toast.error('Failed to copy');
     }
   };
-
-  const hasError = !!error;
-  const isEmpty = !value.trim();
 
   return (
     <div className="mb-6">
@@ -117,7 +123,7 @@ export function KeyField({
           id={id}
           type={isSensitive && !showKey ? 'password' : 'text'}
           value={value}
-          onChange={(e) => onChange?.(e.target.value)}
+          onChange={handleChange}
           onBlur={onBlur}
           onFocus={onFocus}
           disabled={disabled}
@@ -183,4 +189,4 @@ export function KeyField({
       )}
     </div>
   );
-}
+});
