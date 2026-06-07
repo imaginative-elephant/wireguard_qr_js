@@ -20,6 +20,7 @@ const DEFAULT_PEER: Peer = {
   allowedIPs: '',
   persistentKeepalive: '',
   presharedKey: '',
+  comment: '',
 };
 
 // Dynamic import with named export
@@ -115,6 +116,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
           endpoint: p.endpoint?.trim() || undefined,
           allowedIps: p.allowedIPs?.trim() || undefined,
           persistentKeepalive: p.persistentKeepalive ? parseInt(p.persistentKeepalive) : undefined,
+          comment: p.comment?.trim() || undefined,
         })),
     });
   }, [isConfigFullyValid, interfacePrivateKey, address, dns, listenPort, mtu, peers]);
@@ -239,6 +241,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
           allowedIPs: '0.0.0.0/0',
           persistentKeepalive: '',
           presharedKey: '',
+          comment: 'My Home Server',
         },
       ],
     });
@@ -264,6 +267,18 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
       try {
         const content = e.target?.result as string;
         const parsed = parseWireGuardConfig(content);
+        const newPeers =
+          parsed.peers.length > 0
+            ? parsed.peers.map((peer, idx) => ({
+                id: (idx + 1).toString(),
+                publicKey: peer.publicKey || '',
+                endpoint: peer.endpoint || '',
+                allowedIPs: peer.allowedIps || '',
+                persistentKeepalive: peer.persistentKeepalive?.toString() || '',
+                presharedKey: peer.presharedKey || '',
+                comment: peer.comment || peer.name || '',
+              }))
+            : [{ ...DEFAULT_PEER }];
 
         reset({
           interfacePrivateKey: parsed.interface.privateKey || '',
@@ -271,20 +286,11 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
           dns: parsed.interface.dns || '',
           listenPort: parsed.interface.listenPort?.toString() || '',
           mtu: parsed.interface.mtu?.toString() || '',
-          peers:
-            parsed.peers.length > 0
-              ? parsed.peers.map((peer, idx) => ({
-                  id: (idx + 1).toString(),
-                  publicKey: peer.publicKey || '',
-                  endpoint: peer.endpoint || '',
-                  allowedIPs: peer.allowedIps || '',
-                  persistentKeepalive: peer.persistentKeepalive?.toString() || '',
-                  presharedKey: peer.presharedKey || '',
-                }))
-              : [{ ...DEFAULT_PEER }],
+          peers: newPeers,
         });
+
         setInterfacePublicKey('');
-        toast.success('Config loaded successfully');
+        toast.success(`Config loaded successfully with (${newPeers.length} peer(s))`);
       } catch (error) {
         toast.error(
           error instanceof Error ? `Failed to parse: ${error.message}` : 'Failed to parse config'
@@ -596,6 +602,23 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
                           error={errors.peers?.[index]?.persistentKeepalive?.message}
                           placeholder=""
                           type="number"
+                        />
+                      )}
+                    />
+
+                    {/* Comment */}
+                    <Controller
+                      control={control}
+                      name={`peers.${index}.comment`}
+                      render={({ field: peerField }) => (
+                        <ValidatedInput
+                          label="Comment / Friendly Name (optional)"
+                          value={peerField.value || ''}
+                          onChange={peerField.onChange}
+                          onBlur={peerField.onBlur}
+                          onFocus={() => trigger(`peers.${index}.comment`)}
+                          error={errors.peers?.[index]?.comment?.message}
+                          placeholder={`Peer ${index + 1}`}
                         />
                       )}
                     />

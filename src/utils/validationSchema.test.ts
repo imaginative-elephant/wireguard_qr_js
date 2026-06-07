@@ -21,6 +21,7 @@ describe('validationSchema', () => {
             allowedIPs: '0.0.0.0/0, ::/0',
             persistentKeepalive: '25',
             presharedKey: '',
+            comment: 'My Home Server',
           },
         ],
       });
@@ -99,7 +100,63 @@ describe('validationSchema', () => {
       });
       expect(result.success).toBe(true);
     });
+
+    describe('comment field', () => {
+      it('accepts valid comments', () => {
+        const result = configSchema.safeParse({
+          interfacePrivateKey: validPrivateKey,
+          address: '10.0.0.2/32',
+          peers: [
+            {
+              id: '1',
+              publicKey: validPublicKey,
+              comment: 'Production VPN - AWS Frankfurt',
+            },
+          ],
+        });
+        expect(result.success).toBe(true);
+      });
+
+      it('accepts empty comment', () => {
+        const result = configSchema.safeParse({
+          interfacePrivateKey: validPrivateKey,
+          address: '10.0.0.2/32',
+          peers: [{ id: '1', publicKey: validPublicKey, comment: '' }],
+        });
+        expect(result.success).toBe(true);
+      });
+
+      it('accepts undefined / missing comment', () => {
+        const result = configSchema.safeParse({
+          interfacePrivateKey: validPrivateKey,
+          address: '10.0.0.2/32',
+          peers: [{ id: '1', publicKey: validPublicKey }],
+        });
+        expect(result.success).toBe(true);
+      });
+
+      it('trims whitespace from comment', () => {
+        const result = configSchema.safeParse({
+          interfacePrivateKey: validPrivateKey,
+          address: '10.0.0.2/32',
+          peers: [{ id: '1', publicKey: validPublicKey, comment: '   Trimmed Comment   ' }],
+        });
+        expect(result.success).toBe(true);
+      });
+
+      it('rejects comments that are too long', () => {
+        const longComment = 'a'.repeat(201);
+        const result = configSchema.safeParse({
+          interfacePrivateKey: validPrivateKey,
+          address: '10.0.0.2/32',
+          peers: [{ id: '1', publicKey: validPublicKey, comment: longComment }],
+        });
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].message).toContain('200 characters or less');
+      });
+    });
   });
+
   it('accepts multiple peers (minimum values)', () => {
     const result = configSchema.safeParse({
       interfacePrivateKey: validPrivateKey,
@@ -175,6 +232,20 @@ describe('validationSchema', () => {
         interfacePrivateKey: validPrivateKey,
         address: '10.0.0.2/32',
         peers: [],
+      });
+      expect(result.success).toBe(true);
+    });
+    it('accepts peer with comment containing special characters', () => {
+      const result = configSchema.safeParse({
+        interfacePrivateKey: validPrivateKey,
+        address: '10.0.0.2/32',
+        peers: [
+          {
+            id: '1',
+            publicKey: validPublicKey,
+            comment: "User's iPhone (Test) - [Office]",
+          },
+        ],
       });
       expect(result.success).toBe(true);
     });

@@ -62,6 +62,12 @@ const peerSchema = z.object({
     })
     .optional()
     .or(z.literal('')),
+  comment: z
+    .string()
+    .trim()
+    .max(200, 'Comment must be 200 characters or less')
+    .optional()
+    .or(z.literal('')),
 });
 export const configSchema = z.object({
   interfacePrivateKey: createKeySchema('Private Key').min(1, 'Private key is required'),

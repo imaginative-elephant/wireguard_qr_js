@@ -5,6 +5,7 @@ export interface Peer {
   allowedIPs: string;
   persistentKeepalive: string;
   presharedKey: string;
+  comment?: string;
 }
 
 export interface PeerError {
@@ -12,6 +13,7 @@ export interface PeerError {
   endpoint?: string;
   allowedIPs?: string;
   presharedKey?: string;
+  comment?: string;
 }
 
 export interface ValidationErrors {

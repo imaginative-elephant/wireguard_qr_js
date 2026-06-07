@@ -4,16 +4,18 @@ type RawIniSection = Record<string, string | number | undefined>;
 import type { WireGuardConfig } from '../types/wireguard';
 
 /**
- * Parse WireGuard .conf file content
+ * Parse WireGuard .conf file content.
+ * Supports standard [Interface] and [Peer] sections, as well as multiple peers defined as [Peer1], [Peer2], etc. to allow multiple peer definitions in the same config.
  */
 export function parseWireGuardConfig(content: string): WireGuardConfig {
-  const data = parse(content) as Record<string, unknown>;
+  const processedContent = parseConfigPeerComments(content);
+  console.debug('Processed INI content with comments handled:\n', processedContent);
+  const data = parse(processedContent) as Record<string, unknown>;
 
   const config: WireGuardConfig = {
     interface: {},
     peers: [],
   };
-
   // Parse Interface section
   if (data.Interface) {
     const iface = data.Interface as RawIniSection;
@@ -33,9 +35,20 @@ export function parseWireGuardConfig(content: string): WireGuardConfig {
   }
 
   // Parse Peer sections
+  const peerSections: RawIniSection[] = [];
   if (data.Peer) {
-    const peers = Array.isArray(data.Peer) ? data.Peer : [data.Peer];
-    config.peers = peers.map((peer) => {
+    peerSections.push(data.Peer as RawIniSection);
+  }
+
+  // Check for Peer1, Peer2, Peer3, ...
+  let i = 1;
+  while (data[`Peer${i}`]) {
+    peerSections.push(data[`Peer${i}`] as RawIniSection);
+    i++;
+  }
+
+  if (peerSections.length > 0) {
+    config.peers = peerSections.map((peer) => {
       const section = peer as RawIniSection;
       return {
         publicKey: typeof section.PublicKey === 'string' ? section.PublicKey : undefined,
@@ -47,11 +60,63 @@ export function parseWireGuardConfig(content: string): WireGuardConfig {
           typeof section.PersistentKeepalive === 'number'
             ? parseInt(String(section.PersistentKeepalive))
             : undefined,
+        comment:
+          typeof section.Comment === 'string'
+            ? section.Comment
+            : typeof section.Name === 'string'
+              ? section.Name
+              : undefined,
       };
     });
   }
 
   return config;
+}
+
+/**
+ * Parses peer comments from WireGuard config content and injects them as "Comment" fields in the corresponding peer sections.
+ * This allows us to preserve user comments that describe peers, which are often placed as lines starting with a single '#' before the [Peer] section.
+ * Also handles multiple peers and rewrites them as [Peer1], [Peer2], etc. to ensure the ini parser treats them as separate sections.
+ */
+function parseConfigPeerComments(content: string): string {
+  const lines = content.split('\n');
+  const processedLines: string[] = [];
+  let pendingPeerComment: string | undefined = undefined;
+  let peerCounter = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('#') && !trimmed.startsWith('##')) {
+      const commentText = trimmed.substring(1).trim();
+      if (commentText) {
+        pendingPeerComment = commentText;
+      }
+      processedLines.push(line);
+      continue;
+    }
+
+    if (trimmed.toLowerCase() === '[peer]') {
+      peerCounter++;
+      // Rename to [Peer1], [Peer2], etc. so ini parser treats them separately
+      processedLines.push(`[Peer${peerCounter}]`);
+
+      if (pendingPeerComment) {
+        processedLines.push(`Comment = ${pendingPeerComment}`);
+        pendingPeerComment = undefined;
+      }
+      continue;
+    }
+
+    // Reset pending comment on any other section
+    if (trimmed.startsWith('[')) {
+      pendingPeerComment = undefined;
+    }
+
+    processedLines.push(line);
+  }
+
+  return processedLines.join('\n');
 }
 
 const formatValue = (value: string | number | undefined): string | null => {
@@ -115,7 +180,7 @@ export function generateWireGuardConfig(config: WireGuardConfig): string {
   config.peers
     .filter((p) => p.publicKey?.trim())
     .forEach((peer, index) => {
-      const comment = peer.name || peer.comment || `Peer ${index + 1}`;
+      const comment = peer.name?.trim() || peer.comment?.trim() || `Peer ${index + 1}`;
       if (comment) sections.push(`# ${comment}`);
 
       sections.push(
