@@ -1,5 +1,5 @@
-import { useState, useMemo, lazy, Suspense, useEffect, useRef } from 'react';
-import { Plus, Trash2, RotateCcw, FileText, Upload, Download, Key } from 'lucide-react';
+import { useState, useMemo, lazy, Suspense } from 'react';
+import { RotateCcw, FileText, Upload, Download, Key } from 'lucide-react';
 import { KeyField } from './KeyField';
 import { generateKeyPair, derivePubKey, generatePresharedKey } from '../utils/crypto';
 import { downloadWireGuardConfig } from '../utils/download';
@@ -8,8 +8,9 @@ import { ValidatedInput } from './ValidatedInput';
 import toast from 'react-hot-toast';
 import type { Peer } from '../types/wireguard';
 import { Card } from './Card';
+import { PeerSection } from './PeerSection';
 
-import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
+import { useForm, Controller, useWatch, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { configSchema, type ConfigFormData } from '../utils/validationSchema';
 
@@ -58,11 +59,6 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
     trigger,
   } = form;
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'peers',
-  });
-
   const values = useWatch({ control });
   const interfacePrivateKey = values.interfacePrivateKey ?? '';
   const address = values.address ?? '';
@@ -70,23 +66,6 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
   const listenPort = values.listenPort ?? '';
   const mtu = values.mtu ?? '';
   const peers = useMemo(() => (values.peers as Peer[]) ?? [], [values.peers]);
-
-  const latestPeerRef = useRef<HTMLDivElement>(null);
-  const prevPeerCountRef = useRef(fields.length); // Track previous count
-
-  // Auto-focus first input of newly added peer
-  useEffect(() => {
-    if (fields.length > prevPeerCountRef.current) {
-      // New peer was added
-      setTimeout(() => {
-        if (latestPeerRef.current) {
-          const firstInput = latestPeerRef.current.querySelector('input');
-          firstInput?.focus();
-        }
-      }, 80);
-    }
-    prevPeerCountRef.current = fields.length;
-  }, [fields.length]);
 
   const isConfigFullyValid = useMemo(() => {
     return (
@@ -150,13 +129,7 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
   // === Large / Special Buttons ===
   const largeButtonBase = `${buttonBase} w-full rounded-3xl font-semibold text-white focus-visible:ring-blue-400`;
 
-  const addPeerButton = `${largeButtonBase} hidden md:block border border-emerald-500/30 bg-gradient-to-r from-emerald-600 to-emerald-700 py-5 text-lg shadow-lg shadow-emerald-600/30 hover:from-emerald-500 hover:to-emerald-600 hover:shadow-xl`;
-
   const downloadButton = `${largeButtonBase} flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 py-6 text-xl shadow-xl shadow-emerald-500/40 hover:brightness-110 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60`;
-
-  // === Mobile Floating Action Button (Standalone) ===
-  const addPeerButtonMobile =
-    'fixed bottom-6 right-6 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-2xl shadow-emerald-600/50 transition-all duration-200 hover:bg-emerald-500 active:scale-95 md:hidden';
 
   // ====================== Handlers ======================
 
@@ -186,18 +159,6 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
       console.error(error);
       toast.error(error instanceof Error ? error.message : 'Invalid private key');
     }
-  };
-
-  const addPeer = () => {
-    const newPeer: Peer = { ...DEFAULT_PEER, id: (fields.length + 1).toString() };
-    append(newPeer, { shouldFocus: true });
-    toast.success('Peer added');
-  };
-
-  const removePeer = (index: number) => {
-    if (fields.length === 1) return toast.error('Must have at least one peer');
-    remove(index);
-    toast.success('Peer removed');
   };
 
   const handleGeneratePresharedKeyForPeer = (index: number) => {
@@ -302,386 +263,235 @@ export function ConfigBuilder({ clearClipboardAfterCopy }: ConfigBuilderProps) {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 md:py-10">
-      {/* Top Action Bar */}
-      <div className="sticky top-3 z-50 mb-8 flex items-center justify-between rounded-3xl border border-white/5 bg-zinc-950/40 px-5 py-4 shadow-2xl shadow-black/60 backdrop-blur-2xl md:mb-12 md:px-6">
-        <div className="text-xl font-semibold tracking-tight text-white">
-          {/* Desktop Top Action Bar Text */}
-          {/* <span className="hidden md:inline">Configuration</span> */}
-          {/* Mobile Top Action Bar Text*/}
-          {/* <span className="md:hidden">Config</span> */}
+    <FormProvider {...form}>
+      <div className="mx-auto max-w-7xl px-4 py-6 md:py-10">
+        {/* Top Action Bar */}
+        <div className="sticky top-3 z-50 mb-8 flex items-center justify-between rounded-3xl border border-white/5 bg-zinc-950/40 px-5 py-4 shadow-2xl shadow-black/60 backdrop-blur-2xl md:mb-12 md:px-6">
+          <div className="text-xl font-semibold tracking-tight text-white">
+            {/* Desktop Top Action Bar Text */}
+            {/* <span className="hidden md:inline">Configuration</span> */}
+            {/* Mobile Top Action Bar Text*/}
+            {/* <span className="md:hidden">Config</span> */}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+            <button
+              onClick={clearAll}
+              className={clearAllButton}
+              title="Clear all fields and start over"
+              aria-label="Clear all fields"
+            >
+              <RotateCcw size={18} aria-hidden="true" />
+              <span className="hidden sm:inline">Clear All</span>
+            </button>
+
+            <button
+              onClick={loadExample}
+              className={loadExampleButton}
+              title="Load a sample WireGuard configuration"
+              aria-label="Load a sample WireGuard configuration"
+            >
+              <FileText size={18} aria-hidden="true" />
+              <span className="hidden sm:inline">Load Example</span>
+            </button>
+
+            <label
+              htmlFor="upload-file"
+              className={uploadConfigButton}
+              role="button"
+              tabIndex={0}
+              aria-label="Upload an existing .conf file"
+              title="Upload an existing .conf file"
+            >
+              <input
+                id="upload-file"
+                type="file"
+                accept=".conf"
+                onChange={handleUploadConfig}
+                className="hidden"
+                aria-hidden="false"
+              />
+              <Upload size={18} aria-hidden="true" />
+              <span className="hidden sm:inline">Upload .conf</span>
+            </label>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
-          <button
-            onClick={clearAll}
-            className={clearAllButton}
-            title="Clear all fields and start over"
-            aria-label="Clear all fields"
-          >
-            <RotateCcw size={18} aria-hidden="true" />
-            <span className="hidden sm:inline">Clear All</span>
-          </button>
-
-          <button
-            onClick={loadExample}
-            className={loadExampleButton}
-            title="Load a sample WireGuard configuration"
-            aria-label="Load a sample WireGuard configuration"
-          >
-            <FileText size={18} aria-hidden="true" />
-            <span className="hidden sm:inline">Load Example</span>
-          </button>
-
-          <label
-            htmlFor="upload-file"
-            className={uploadConfigButton}
-            role="button"
-            tabIndex={0}
-            aria-label="Upload an existing .conf file"
-            title="Upload an existing .conf file"
-          >
-            <input
-              id="upload-file"
-              type="file"
-              accept=".conf"
-              onChange={handleUploadConfig}
-              className="hidden"
-              aria-hidden="false"
-            />
-            <Upload size={18} aria-hidden="true" />
-            <span className="hidden sm:inline">Upload .conf</span>
-          </label>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
-        {/* Left Column - Configuration */}
-        <div className="space-y-8 md:space-y-10 lg:col-span-7">
-          {/* Interface Card */}
-          <Card>
-            <div className="mb-8 flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/10 ring-1 ring-blue-500/20">
-                <div className="h-3 w-3 rounded-full bg-blue-500" />
-              </div>
-              <h2 className="text-2xl font-semibold tracking-tight text-white md:text-3xl">
-                Interface
-              </h2>
-            </div>
-
-            {/* Private Key */}
-            <div className="space-y-8">
-              <KeyField
-                label="Private Key"
-                value={interfacePrivateKey}
-                onChange={(v) =>
-                  setValue('interfacePrivateKey', v, { shouldValidate: true, shouldTouch: true })
-                }
-                onBlur={() => trigger('interfacePrivateKey')}
-                onFocus={() => trigger('interfacePrivateKey')}
-                onGenerate={handleGenerateInterfaceKeys}
-                generateButtonText={isGenerating ? 'Generating...' : 'Generate Keys'}
-                isSensitive
-                defaultHidden={true}
-                error={errors.interfacePrivateKey?.message}
-                disabled={isGenerating}
-                clearClipboardAfterCopy={clearClipboardAfterCopy}
-              />
-
-              {/* Public Key */}
-              <KeyField
-                label="Public Key"
-                value={interfacePublicKey}
-                readonly
-                showGenerateButton={false}
-                clearClipboardAfterCopy={clearClipboardAfterCopy}
-              />
-
-              <div className="flex justify-center">
-                <button
-                  onClick={handleDeriveInterfacePubKey}
-                  disabled={!interfacePrivateKey}
-                  className={derivePublicKeyButton}
-                  title="Derive public key from private key"
-                  aria-label="Derive public key from private key"
-                >
-                  <Key size={18} aria-hidden="true" />
-                  Derive Public Key from Private
-                </button>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
+          {/* Left Column - Configuration */}
+          <div className="space-y-8 md:space-y-10 lg:col-span-7">
+            {/* Interface Card */}
+            <Card>
+              <div className="mb-8 flex items-center gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/10 ring-1 ring-blue-500/20">
+                  <div className="h-3 w-3 rounded-full bg-blue-500" />
+                </div>
+                <h2 className="text-2xl font-semibold tracking-tight text-white md:text-3xl">
+                  Interface
+                </h2>
               </div>
 
-              {/* Address + DNS (Left - More Space) + Listen Port + MTU (Right - Less Space) */}
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-7">
-                <div className="space-y-6 sm:col-span-5">
-                  {/* Address */}
-                  <Controller
-                    control={control}
-                    name="address"
-                    render={({ field }) => (
-                      <ValidatedInput
-                        label="Address"
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        onBlur={() => trigger('address')}
-                        onFocus={() => trigger('address')}
-                        error={errors.address?.message}
-                        placeholder="10.0.0.2/32"
-                      />
-                    )}
-                  />
+              {/* Private Key */}
+              <div className="space-y-8">
+                <KeyField
+                  label="Private Key"
+                  value={interfacePrivateKey}
+                  onChange={(v) =>
+                    setValue('interfacePrivateKey', v, { shouldValidate: true, shouldTouch: true })
+                  }
+                  onBlur={() => trigger('interfacePrivateKey')}
+                  onFocus={() => trigger('interfacePrivateKey')}
+                  onGenerate={handleGenerateInterfaceKeys}
+                  generateButtonText={isGenerating ? 'Generating...' : 'Generate Keys'}
+                  isSensitive
+                  defaultHidden={true}
+                  error={errors.interfacePrivateKey?.message}
+                  disabled={isGenerating}
+                  clearClipboardAfterCopy={clearClipboardAfterCopy}
+                />
 
-                  {/* DNS */}
-                  <Controller
-                    control={control}
-                    name="dns"
-                    render={({ field }) => (
-                      <ValidatedInput
-                        label="DNS Servers"
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        onBlur={() => trigger('dns')}
-                        onFocus={() => trigger('dns')}
-                        error={errors.dns?.message}
-                        placeholder="1.1.1.1, 9.9.9.9"
-                      />
-                    )}
-                  />
+                {/* Public Key */}
+                <KeyField
+                  label="Public Key"
+                  value={interfacePublicKey}
+                  readonly
+                  showGenerateButton={false}
+                  clearClipboardAfterCopy={clearClipboardAfterCopy}
+                />
+
+                <div className="flex justify-center">
+                  <button
+                    onClick={handleDeriveInterfacePubKey}
+                    disabled={!interfacePrivateKey}
+                    className={derivePublicKeyButton}
+                    title="Derive public key from private key"
+                    aria-label="Derive public key from private key"
+                  >
+                    <Key size={18} aria-hidden="true" />
+                    Derive Public Key from Private
+                  </button>
                 </div>
 
-                {/* Listen Port */}
-                <div className="space-y-6 sm:col-span-2">
-                  <Controller
-                    control={control}
-                    name="listenPort"
-                    render={({ field }) => (
-                      <ValidatedInput
-                        label="Listen Port"
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        onBlur={() => trigger('listenPort')}
-                        onFocus={() => trigger('listenPort')}
-                        error={errors.listenPort?.message}
-                        placeholder="(random)"
-                        type="number"
-                      />
-                    )}
-                  />
+                {/* Address + DNS (Left - More Space) + Listen Port + MTU (Right - Less Space) */}
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-7">
+                  <div className="space-y-6 sm:col-span-5">
+                    {/* Address */}
+                    <Controller
+                      control={control}
+                      name="address"
+                      render={({ field }) => (
+                        <ValidatedInput
+                          label="Address"
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          onBlur={() => trigger('address')}
+                          onFocus={() => trigger('address')}
+                          error={errors.address?.message}
+                          placeholder="10.0.0.2/32"
+                        />
+                      )}
+                    />
 
-                  {/* MTU */}
-                  <Controller
-                    control={control}
-                    name="mtu"
-                    render={({ field }) => (
-                      <ValidatedInput
-                        label="MTU"
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        onBlur={() => trigger('mtu')}
-                        onFocus={() => trigger('mtu')}
-                        error={errors.mtu?.message}
-                        placeholder="(auto)"
-                        type="number"
-                      />
-                    )}
-                  />
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Peers Section */}
-          <div className="space-y-8">
-            {fields.map((field, index) => {
-              return (
-                <Card key={field.id} ref={index === fields.length - 1 ? latestPeerRef : null}>
-                  <div className="mb-8 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-500/20 md:h-10 md:w-10">
-                        <div className="h-3 w-3 rounded-full bg-emerald-500" />
-                      </div>
-                      <h2 className="text-2xl font-semibold tracking-tighter text-white md:text-3xl">
-                        Peer {index + 1}
-                      </h2>
-                    </div>
-
-                    {fields.length > 1 && (
-                      <button
-                        onClick={() => removePeer(index)}
-                        className="rounded-2xl p-3 text-red-400 transition-all hover:bg-red-500/10 hover:text-red-300 active:scale-95"
-                        title="Remove peer"
-                        aria-label="Remove peer"
-                      >
-                        <Trash2 size={22} aria-hidden="true" />
-                      </button>
-                    )}
+                    {/* DNS */}
+                    <Controller
+                      control={control}
+                      name="dns"
+                      render={({ field }) => (
+                        <ValidatedInput
+                          label="DNS Servers"
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          onBlur={() => trigger('dns')}
+                          onFocus={() => trigger('dns')}
+                          error={errors.dns?.message}
+                          placeholder="1.1.1.1, 9.9.9.9"
+                        />
+                      )}
+                    />
                   </div>
 
-                  <div className="space-y-8">
-                    {/* Peer Public Key */}
+                  {/* Listen Port */}
+                  <div className="space-y-6 sm:col-span-2">
                     <Controller
                       control={control}
-                      name={`peers.${index}.publicKey`}
-                      render={({ field: peerField }) => (
-                        <KeyField
-                          label="Peer Public Key"
-                          value={peerField.value || ''}
-                          onChange={peerField.onChange}
-                          onBlur={peerField.onBlur}
-                          onFocus={() => trigger(`peers.${index}.publicKey`)}
-                          error={errors.peers?.[index]?.publicKey?.message}
-                          defaultHidden={false}
-                          clearClipboardAfterCopy={clearClipboardAfterCopy}
-                        />
-                      )}
-                    />
-
-                    {/* Pre-Shared Key */}
-                    <Controller
-                      control={control}
-                      name={`peers.${index}.presharedKey`}
-                      render={({ field: peerField }) => (
-                        <KeyField
-                          label="Pre-Shared Key (optional)"
-                          value={peerField.value || ''}
-                          onChange={peerField.onChange}
-                          onBlur={peerField.onBlur}
-                          onFocus={() => trigger(`peers.${index}.presharedKey`)}
-                          onGenerate={() => handleGeneratePresharedKeyForPeer(index)}
-                          generateButtonText="Generate PSK"
-                          isSensitive
-                          defaultHidden={true}
-                          error={errors.peers?.[index]?.presharedKey?.message}
-                          clearClipboardAfterCopy={clearClipboardAfterCopy}
-                        />
-                      )}
-                    />
-                    {/* Endpoint */}
-                    <Controller
-                      control={control}
-                      name={`peers.${index}.endpoint`}
-                      render={({ field: peerField }) => (
+                      name="listenPort"
+                      render={({ field }) => (
                         <ValidatedInput
-                          label="Endpoint (optional)"
-                          value={peerField.value || ''}
-                          onChange={peerField.onChange}
-                          onBlur={peerField.onBlur}
-                          onFocus={() => trigger(`peers.${index}.endpoint`)}
-                          error={errors.peers?.[index]?.endpoint?.message}
-                          placeholder="vpn.example.com:51820"
-                        />
-                      )}
-                    />
-                    {/* Allowed IPs */}
-                    <Controller
-                      control={control}
-                      name={`peers.${index}.allowedIPs`}
-                      render={({ field: peerField }) => (
-                        <ValidatedInput
-                          label="Allowed IPs"
-                          value={peerField.value || ''}
-                          onChange={peerField.onChange}
-                          onBlur={peerField.onBlur}
-                          onFocus={() => trigger(`peers.${index}.allowedIPs`)}
-                          error={errors.peers?.[index]?.allowedIPs?.message}
-                          placeholder="0.0.0.0/0, ::/0"
-                        />
-                      )}
-                    />
-
-                    {/* Persistent Keepalive */}
-                    <Controller
-                      control={control}
-                      name={`peers.${index}.persistentKeepalive`}
-                      render={({ field: peerField }) => (
-                        <ValidatedInput
-                          label="Persistent Keepalive (optional)"
-                          value={peerField.value || ''}
-                          onChange={peerField.onChange}
-                          onBlur={peerField.onBlur}
-                          onFocus={() => trigger(`peers.${index}.persistentKeepalive`)}
-                          error={errors.peers?.[index]?.persistentKeepalive?.message}
-                          placeholder=""
+                          label="Listen Port"
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          onBlur={() => trigger('listenPort')}
+                          onFocus={() => trigger('listenPort')}
+                          error={errors.listenPort?.message}
+                          placeholder="(random)"
                           type="number"
                         />
                       )}
                     />
 
-                    {/* Comment */}
+                    {/* MTU */}
                     <Controller
                       control={control}
-                      name={`peers.${index}.comment`}
-                      render={({ field: peerField }) => (
+                      name="mtu"
+                      render={({ field }) => (
                         <ValidatedInput
-                          label="Comment / Friendly Name (optional)"
-                          value={peerField.value || ''}
-                          onChange={peerField.onChange}
-                          onBlur={peerField.onBlur}
-                          onFocus={() => trigger(`peers.${index}.comment`)}
-                          error={errors.peers?.[index]?.comment?.message}
-                          placeholder={`Peer ${index + 1}`}
+                          label="MTU"
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          onBlur={() => trigger('mtu')}
+                          onFocus={() => trigger('mtu')}
+                          error={errors.mtu?.message}
+                          placeholder="(auto)"
+                          type="number"
                         />
                       )}
                     />
                   </div>
-                </Card>
-              );
-            })}
+                </div>
+              </div>
+            </Card>
 
-            {/* Desktop Add Peer Button */}
-            <button
-              onClick={addPeer}
-              className={addPeerButton}
-              title="Add another peer"
-              aria-label="Add new peer"
-            >
-              <Plus size={24} aria-hidden="true" className="mr-3 inline" />
-              Add Another Peer
-            </button>
+            {/* Peers Section */}
+            <PeerSection
+              clearClipboardAfterCopy={clearClipboardAfterCopy}
+              onGeneratePresharedKeyForPeer={handleGeneratePresharedKeyForPeer}
+              defaultPeer={DEFAULT_PEER}
+            />
           </div>
-        </div>
 
-        {/* Right Column - QR + Download */}
-        <div className="lg:col-span-5">
-          <div className="sticky top-24 space-y-6 lg:top-28">
-            <Suspense
-              fallback={
-                <Card>
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="mx-auto mb-8 text-7xl opacity-20 md:text-8xl">📱</div>
-                    <h3 className="mb-3 text-2xl font-semibold tracking-tight text-zinc-300">
-                      QR Code
-                    </h3>
-                    <p className="text-zinc-500"> QR Code generator is loading... </p>
-                  </div>
-                </Card>
-              }
-            >
-              <QRDisplay config={isConfigFullyValid ? fullConfig : ''} />
-            </Suspense>
+          {/* Right Column - QR + Download */}
+          <div className="lg:col-span-5">
+            <div className="sticky top-24 space-y-6 lg:top-28">
+              <Suspense
+                fallback={
+                  <Card>
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="mx-auto mb-8 text-7xl opacity-20 md:text-8xl">📱</div>
+                      <h3 className="mb-3 text-2xl font-semibold tracking-tight text-zinc-300">
+                        QR Code
+                      </h3>
+                      <p className="text-zinc-500"> QR Code generator is loading... </p>
+                    </div>
+                  </Card>
+                }
+              >
+                <QRDisplay config={isConfigFullyValid ? fullConfig : ''} />
+              </Suspense>
 
-            <button
-              onClick={handleDownloadConfig}
-              disabled={!isConfigFullyValid || !fullConfig}
-              className={downloadButton}
-              title="Download .conf"
-              aria-label="Download .conf"
-            >
-              <Download size={26} aria-hidden="true" />
-              Download .conf
-            </button>
+              <button
+                onClick={handleDownloadConfig}
+                disabled={!isConfigFullyValid || !fullConfig}
+                className={downloadButton}
+                title="Download .conf"
+                aria-label="Download .conf"
+              >
+                <Download size={26} aria-hidden="true" />
+                Download .conf
+              </button>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Mobile Floating Add Peer Button */}
-      <button
-        onClick={addPeer}
-        className={addPeerButtonMobile}
-        aria-label="Add new peer"
-        title="Add another peer"
-      >
-        <Plus size={28} strokeWidth={3} aria-hidden="true" />
-      </button>
-    </div>
+    </FormProvider>
   );
 }
